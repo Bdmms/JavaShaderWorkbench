@@ -9,22 +9,22 @@ import javax.swing.table.TableCellEditor;
 import com.jogamp.opengl.GL3;
 
 @SuppressWarnings("serial")
-public class TextureTable extends EditorTable
+public class MaterialTable extends EditorTable
 {
-	private JComboBox<BindedTexture.TextureID> _textureIDs = new JComboBox<BindedTexture.TextureID>();
+	private JComboBox<Material.BindedTexture> _textureIDs = new JComboBox<>();
 	
-	public TextureTable() 
+	public MaterialTable( String title, Material material ) 
 	{
-		super( new TextureTableModel() );
+		super( title, new TextureTableModel( material ) );
 		
+		_textureIDs.addItem( new Material.BindedTexture( null, 0 ) );
 		for( int i = GL3.GL_TEXTURE0; i <= GL3.GL_TEXTURE31; i++ )
-			_textureIDs.addItem( new BindedTexture.TextureID( i ) );
+			_textureIDs.addItem( new Material.BindedTexture( null, i ) );
 	}
 	
-	@Override
-	public void bindAll ( GL3 gl, ShaderProgram program )
+	public void addTexture( File file )
 	{
-		_model.bindAll( gl, program );
+		((TextureTableModel)_model).addRow( file );
 	}
 	
 	@Override
@@ -52,38 +52,41 @@ public class TextureTable extends EditorTable
 		return super.getCellEditor( row, column );
 	}
 	
-	private static class TextureTableModel extends EditorTableModel<BindedTexture>
+	private static class TextureTableModel extends ObserverTableModel
 	{
-		public TextureTableModel()
+		private Material material;
+		
+		public TextureTableModel( Material material )
 		{
 			super( new TableColumn[] {
 					new TableColumn( "File", String.class, false ),
 					new TableColumn( "Assigned", String.class, true ),
 					new TableColumn( "Texture", Icon.class, false )	
 			} );
+			
+			this.material = material;
 		}
 		
 		public void addRow( File file )
 		{
-			addRow( new BindedTexture( file ) );
+			material.add( Material.loadTexture( file ), Material.DEFAULT_ID );
 		}
 		
 		@Override
-		public void bindAll( GL3 gl, ShaderProgram program ) 
+		public void removeRow() 
 		{
-			for( BindedTexture texture : _rows )
-				texture.bind( gl );
+			material.removeLast();
 		}
 		
 		@Override
 		public void setValueAt(Object value, int row, int col) 
 		{
-			BindedTexture texture = _rows.get( row );
+			Material.BindedTexture texture = material.get( row );
 			
 			switch( col )
 			{
 			case 0: break;
-			case 1: texture.setBinding( (BindedTexture.TextureID) value ); break;
+			case 1: texture.id = ((Material.BindedTexture) value ).id; break;
 			case 2: break;
 			}
 		}
@@ -93,11 +96,17 @@ public class TextureTable extends EditorTable
 		{
 			switch( col )
 			{
-			case 0: return _rows.get( row ).filename;
-			case 1: return _rows.get( row ).getBindingID();
-			case 2: return _rows.get( row ).getIcon();
+			case 0: return material.get( row ).texture.filename;
+			case 1: return material.get( row );
+			case 2: return material.get( row ).texture.getIcon();
 			default: return null;
 			}
+		}
+
+		@Override
+		public int getRowCount() 
+		{
+			return material.children().size();
 		}
 	}
 }

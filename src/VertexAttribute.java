@@ -27,9 +27,9 @@ public class VertexAttribute
 		}
 	}
 	
-	public boolean isCompatibleWith( VertexBuffer arr )
+	public boolean isCompatibleWith( int stride )
 	{
-		return getVertexSize() == arr.stride() * Float.BYTES;
+		return getVertexSize() == stride * Float.BYTES;
 	}
 	
 	public int getVertexSize()

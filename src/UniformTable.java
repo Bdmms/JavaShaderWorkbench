@@ -3,27 +3,19 @@ import javax.swing.JTextField;
 import javax.swing.JComboBox;
 import javax.swing.table.TableCellEditor;
 
-import com.jogamp.opengl.GL3;
-
 @SuppressWarnings("serial")
 public class UniformTable extends EditorTable
 {
 	private JComboBox<GLDataType> _types = new JComboBox<GLDataType>( GLDataType.values() );
 	private JTextField _textField = new JTextField();
 	
-	public UniformTable()
+	public UniformTable( String title, UniformList uniforms )
 	{
-		super( new UniformTableModel() );
+		super( title, new UniformTableModel( uniforms ) );
 		
-		_textField.setFont( ShaderEditor.FONT );
+		_textField.setFont( EditorTabs.FONT );
 		_textField.setBorder( null );
-		_types.setFont( ShaderEditor.FONT );
-	}
-	
-	@Override
-	public void bindAll ( GL3 gl, ShaderProgram program )
-	{
-		_model.bindAll( gl, program );
+		_types.setFont( EditorTabs.FONT );
 	}
 	
 	@Override
@@ -56,62 +48,30 @@ public class UniformTable extends EditorTable
 		}
 	}
 	
-	private static class Uniform
+	private static class UniformTableModel extends ObserverTableModel
 	{
-		public String name;
-		public GLDataType type;
-		public Object value;
+		private UniformList uniforms;
 		
-		public Uniform( String name, String value, GLDataType type )
-		{
-			this.name = name;
-			this.value = value;
-			this.type = type;
-		}
-		
-		public void setValue( String val )
-		{
-			// TODO
-			switch( type )
-			{
-			default: value = val; break;
-			}
-		}
-	}
-	
-	private static class UniformTableModel extends EditorTableModel<Uniform>
-	{
-		public UniformTableModel()
+		public UniformTableModel( UniformList uniforms )
 		{
 			super( new TableColumn[] {
 					new TableColumn( "Uniform", String.class, true ),
 					new TableColumn( "Type", GLDataType.class, true ),
 					new TableColumn( "Value", String.class, true )	
 			} );
+			
+			this.uniforms = uniforms;
 		}
 		
 		public void addRow()
 		{
-			addRow( new Uniform( "", "", GLDataType.VEC1 ) );
+			uniforms.add( "", GLDataType.VEC1, "" );
 		}
 		
-		public void bindAll( GL3 gl, ShaderProgram program ) 
+		@Override
+		public void removeRow() 
 		{
-			for( Uniform uniform : _rows )
-			{
-				if( uniform.type == GLDataType.SAMP2D )
-				{
-					try
-					{
-						int value = Integer.parseInt( uniform.value.toString() );
-						int loc = gl.glGetUniformLocation( program.getID(), uniform.name );
-						gl.glUniform1i( loc, value );
-					}
-					catch( NumberFormatException e ) {}
-				}
-				
-				System.out.println( uniform.name + ": " + uniform.value.toString() );
-			}
+			uniforms.removeLast();
 		}
 		
 		@Override
@@ -119,9 +79,9 @@ public class UniformTable extends EditorTable
 		{
 			switch( col )
 			{
-			case 0: _rows.get( row ).name = value.toString(); break;
-			case 1: _rows.get( row ).type = (GLDataType) value; break;
-			case 2: _rows.get( row ).setValue( value.toString() ); break;
+			case 0: uniforms.get( row ).name = value.toString(); break;
+			case 1: uniforms.get( row ).type = (GLDataType) value; break;
+			case 2: uniforms.get( row ).setValue( value.toString() ); break;
 			}
 		}
 
@@ -130,11 +90,17 @@ public class UniformTable extends EditorTable
 		{
 			switch( col )
 			{
-			case 0: return _rows.get( row ).name;
-			case 1: return _rows.get( row ).type;
-			case 2: return _rows.get( row ).value;
+			case 0: return uniforms.get( row ).name;
+			case 1: return uniforms.get( row ).type;
+			case 2: return uniforms.get( row ).value;
 			default: return null;
 			}
+		}
+
+		@Override
+		public int getRowCount() 
+		{
+			return uniforms.size();
 		}
 	}
 }

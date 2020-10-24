@@ -17,25 +17,32 @@ import javax.swing.table.TableModel;
 import com.jogamp.opengl.GL3;
 
 @SuppressWarnings("serial")
-public abstract class EditorTable extends JTable
+public abstract class EditorTable extends JTable implements EditorView
 {
-	protected EditorTableModel<?> _model;
+	protected ObserverTableModel _model;
 	
-	public EditorTable( EditorTableModel<?> model )
+	public EditorTable( String title, ObserverTableModel model )
 	{
 		super( model );
 		_model = model;
 		
-		setFont( ShaderEditor.FONT );
-		getTableHeader().setFont( ShaderEditor.FONT );
+		setName( title );
+		setFont( EditorTabs.FONT );
+		getTableHeader().setFont( EditorTabs.FONT );
 	}
 	
-	public abstract void bindAll( GL3 gl, ShaderProgram program );
+	public void bindAll( GL3 gl, ShaderProgram program )
+	{
+		if( _model instanceof EditorTableModel )
+		{
+			((EditorTableModel<?>)_model).bindAll( gl, program );
+		}
+	}
 	
 	protected abstract void add();
 	protected abstract void remove();
 	
-	public static JComponent createEditor( final EditorTable editor )
+	public JComponent createView()
 	{
 		JPanel panel = new JPanel( new BorderLayout() );
 		JPanel buttons = new JPanel( new BorderLayout() );
@@ -43,31 +50,41 @@ public abstract class EditorTable extends JTable
 		JButton createRow = new JButton( new AbstractAction( "Add" )
 		{
 			@Override
-			public void actionPerformed(ActionEvent arg0) 
+			public void actionPerformed( ActionEvent e ) 
 			{
-				editor.add();
+				add();
 			}
 		} );
 		
 		JButton deleteRow = new JButton( new AbstractAction( "Remove" )
 		{
 			@Override
-			public void actionPerformed(ActionEvent arg0) 
+			public void actionPerformed( ActionEvent e ) 
 			{
-				editor.remove();
+				remove();
 			}
 		} );
 		
 		buttons.add( createRow, BorderLayout.WEST );
 		buttons.add( deleteRow, BorderLayout.EAST );
 		
-		panel.add( new JScrollPane( editor ), BorderLayout.CENTER );
+		panel.add( new JScrollPane( this ), BorderLayout.CENTER );
 		panel.add( buttons, BorderLayout.SOUTH );
 		
 		return panel;
 	}
 	
-	protected static class TableColumn
+	public JComponent getComponent()
+	{
+		return this;
+	}
+	
+	public ObserverTableModel getEditorModel()
+	{
+		return _model;
+	}
+	
+	public static class TableColumn
 	{
 		public final String name;
 		public final Class<?> type;
@@ -81,35 +98,21 @@ public abstract class EditorTable extends JTable
 		}
 	}
 	
-	protected static abstract class EditorTableModel<E> implements TableModel
+	protected static abstract class ObserverTableModel implements TableModel
 	{
 		private List<TableModelListener> _listeners = new ArrayList<>();
-		protected List<E> _rows = new ArrayList<>();
-		protected List<TableColumn> _columns;
+		protected List<TableColumn> _columns = new ArrayList<>();
 		
-		public EditorTableModel( TableColumn[] columns )
+		public ObserverTableModel( TableColumn[] columns )
 		{
-			_columns = Arrays.asList( columns );
+			_columns.addAll( Arrays.asList( columns ) );
 		}
 		
-		public void addColumn( TableColumn column )
+		public void setColumns( TableColumn[] columns )
 		{
-			_columns.add( column );
-		}
-		
-		public void addRow( E row )
-		{
-			_rows.add( row );
+			_columns.clear();
+			_columns.addAll( Arrays.asList( columns ) );
 			updateTable( new TableModelEvent( this ) );
-		}
-		
-		public void removeRow()
-		{
-			if( !_rows.isEmpty() )
-			{
-				_rows.remove( _rows.size() - 1 );
-				updateTable( new TableModelEvent( this ) );
-			}
 		}
 		
 		protected void updateTable( TableModelEvent e )
@@ -120,7 +123,10 @@ public abstract class EditorTable extends JTable
 			}
 		}
 		
-		public abstract void bindAll( GL3 gl, ShaderProgram program );
+		public void addColumn( TableColumn column )
+		{
+			_columns.add( column );
+		}
 		
 		@Override
 		public void addTableModelListener( TableModelListener listener ) 
@@ -156,6 +162,58 @@ public abstract class EditorTable extends JTable
 		public boolean isCellEditable( int row, int col ) 
 		{
 			return _columns.get( col ).editable;
+		}
+		
+		public abstract void removeRow();
+		public abstract void setValueAt(Object value, int row, int col);
+		public abstract Object getValueAt( int row, int col );
+	}
+	
+	protected static abstract class EditorTableModel<E> extends ObserverTableModel
+	{
+		protected List<E> _rows = new ArrayList<>();
+		
+		public EditorTableModel( TableColumn[] columns )
+		{
+			super( columns );
+		}
+		
+		public void clear()
+		{
+			_rows.clear();
+		}
+		
+		public void setColumns( TableColumn[] columns )
+		{
+			_rows.clear();
+			super.setColumns( columns );
+		}
+		
+		public void addRow( E row )
+		{
+			_rows.add( row );
+			updateTable( new TableModelEvent( this ) );
+		}
+		
+		public void removeRow()
+		{
+			if( !_rows.isEmpty() )
+			{
+				_rows.remove( _rows.size() - 1 );
+				updateTable( new TableModelEvent( this ) );
+			}
+		}
+		
+		public abstract void bindAll( GL3 gl, ShaderProgram program );
+		
+		public List<E> getRows()
+		{
+			return _rows;
+		}
+		
+		public E getRow( int row )
+		{
+			return _rows.get( row );
 		}
 		
 		@Override
