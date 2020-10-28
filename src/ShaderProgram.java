@@ -1,9 +1,16 @@
 import com.jogamp.opengl.GL3;
 import com.jogamp.opengl.util.glsl.ShaderUtil;
 
-public class ShaderProgram extends AbstractNode
+public class ShaderProgram extends Node
 {
+	// Shader Global Uniforms
+	public static float timer = 0.0f;
+	public static float[] view = new float[16];
+	
 	private int _shaderID = -1;
+	
+	private int timer_loc;
+	private int view_loc;
 	
 	public ShaderProgram( String name )
 	{
@@ -11,7 +18,7 @@ public class ShaderProgram extends AbstractNode
 	}
 	
 	@Override
-	public boolean initialize( GL3 gl )
+	public boolean initialize( GL3 gl, CompileStatus status )
 	{
 		_shaderID = gl.glCreateProgram();
 		
@@ -37,7 +44,9 @@ public class ShaderProgram extends AbstractNode
 		
 		if( linkStatus[0] == GL3.GL_TRUE )
 		{
-			return super.initialize( gl );
+			setGlobalUniformLocations( gl );
+			status.shader = this;
+			return super.initialize( gl, status );
 		}
 		else
 		{
@@ -46,10 +55,22 @@ public class ShaderProgram extends AbstractNode
 		}
 	}
 	
+	private void setGlobalUniformLocations( GL3 gl )
+	{
+		gl.glUseProgram( _shaderID );
+		timer_loc = gl.glGetUniformLocation( _shaderID, "time" );
+		view_loc = gl.glGetUniformLocation( _shaderID, "view" );
+	}
+	
 	@Override
 	public void render( GL3 gl )
 	{
 		gl.glUseProgram( _shaderID );
+		
+		// Update Global Uniforms
+		gl.glUniform1f( timer_loc, timer );
+		gl.glUniformMatrix4fv( view_loc, 1, false, view, 0);
+		
 		super.render( gl );
 	}
 	

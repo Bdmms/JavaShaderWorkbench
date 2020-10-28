@@ -1,7 +1,7 @@
 import com.jogamp.opengl.GL3;
 import com.jogamp.opengl.util.glsl.ShaderUtil;
 
-public class Shader extends AbstractNode
+public class Shader extends Node
 {
 	private String[] _code = new String[1];
 	private int _type;
@@ -25,7 +25,7 @@ public class Shader extends AbstractNode
 		
 		if ( compileStatus[0] == GL3.GL_TRUE )
 		{
-			return super.initialize( gl );
+			return true;
 		}
 		else
 		{

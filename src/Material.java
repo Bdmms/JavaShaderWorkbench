@@ -1,12 +1,27 @@
+import java.awt.image.BufferedImage;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.HashMap;
+import java.util.Iterator;
 
+import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL3;
 
-public class Material extends AbstractNode
+public class Material extends Node
 {
 	public static final int DEFAULT_ID = 0;
+	public static final String DEFAULT = "default";
+	
 	private static HashMap<String, Texture> library = new HashMap<>();
+	
+	// Default textures
+	{
+		BufferedImage image = new BufferedImage( 1, 1, BufferedImage.TYPE_INT_RGB );
+		image.setRGB( 0, 0, 0xFFFFFFFF );
+		library.put( DEFAULT, new Texture( DEFAULT, image ) );
+	}
 	
 	public Material( String name ) 
 	{
@@ -51,6 +66,16 @@ public class Material extends AbstractNode
 		return (BindedTexture)children().get( index );
 	}
 	
+	public static void setTexture( String name, Texture texture )
+	{
+		library.put( name, texture );
+	}
+	
+	public static Texture getTexture( String key )
+	{
+		return library.get( key );
+	}
+	
 	public static Texture loadTexture( File file )
 	{
 		Texture texture = library.get( file.getName() );
@@ -72,7 +97,40 @@ public class Material extends AbstractNode
 		}
 	}
 	
-	public static class BindedTexture extends AbstractNode
+	public static HashMap<String, Material> loadMtlFile( File file ) throws IOException
+	{
+		if( !file.exists() ) return null;
+		
+		BufferedReader reader = new BufferedReader( new FileReader( file ) );
+		Material material = null;
+		
+		HashMap<String, Material> materials = new HashMap<>();
+		String dir = file.getAbsolutePath().substring( 0, file.getAbsolutePath().lastIndexOf( '\\' ) ) + "\\";
+		
+		Iterator<String> iterator = reader.lines().iterator();
+		while( iterator.hasNext() )
+		{
+			String line = iterator.next();
+			String[] parts = line.split( "\\s*( |\t)\\s*" );
+			
+			switch( parts[0] )
+			{
+			case "newmtl":
+				material = new Material( parts[1] );
+				materials.put( parts[1], material );
+				break;
+				
+			case "map_Kd":
+				material.add( Material.loadTexture( new File( dir + parts[1] ) ), GL.GL_TEXTURE0 );
+				break;
+			}
+		}
+		
+		reader.close();
+		return materials;
+	}
+	
+	public static class BindedTexture extends Node
 	{
 		public Texture texture;
 		public int id;

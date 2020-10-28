@@ -19,15 +19,8 @@ public class View3D extends GLJPanel implements GLEventListener, MouseListener, 
 	private boolean _valid = false;
 	private ProjectTree _tree;
 	
-	// Shader uniforms
-	private float timer = 0.0f;
-	private float[] view = new float[16];
-	
-	// Shader uniform locations
-	private int timer_loc;
-	private int view_loc;
-	
 	// Mouse variables
+	private int buttonPress = 0;
 	private int lastX;
 	private int lastY;
 	private float sensitivity = 5.0f;
@@ -41,10 +34,11 @@ public class View3D extends GLJPanel implements GLEventListener, MouseListener, 
 		super( capabilities );
 		_tree = editor;
 		
-		view[ 0] = scale;
-		view[ 5] = scale;
-		view[10] = scale;
-		view[15] = 1.0f;
+		ShaderProgram.view[ 0] = scale;
+		ShaderProgram.view[ 5] = scale;
+		ShaderProgram.view[10] = scale;
+		ShaderProgram.view[14] = 0.02f;
+		ShaderProgram.view[15] = 1.0f;
 		
 		addMouseListener( this );
 		addMouseMotionListener( this );
@@ -56,38 +50,9 @@ public class View3D extends GLJPanel implements GLEventListener, MouseListener, 
 	{
 		_recompile = false;
 		
-		// TODO: automate
-		Model model = (Model)_tree.get( 0 );
-		ShaderProgram program = (ShaderProgram)model.children().get( 0 );
-		Shader vShader = (Shader)program.children().get( 0 );
-		UniformList uniforms = (UniformList)model.children().get( model.children().size() - 1 );
-		
-		VertexAttribute attribute = VertexAttribute.parse( vShader.getCode() );
-		if( attribute == null || !attribute.isCompatibleWith( 8 ) )
-		{
-			System.err.println("Error - Incompatible attribute!");
-			return false;
-		}
-		
 		_tree.dispose( gl );
 		if( !_tree.initialize( gl ) )
 			return false;
-		
-		attribute.print();
-		attribute.bind( gl );
-		
-		// Bind uniforms
-		gl.glUseProgram( program.getID() );
-		
-		// Timer that can be used in shader
-		timer_loc = gl.glGetUniformLocation( program.getID(), "time" );
-		view_loc = gl.glGetUniformLocation( program.getID(), "view" );
-		
-		// Initialize parameters
-		gl.glUniform1f( timer_loc, timer );
-		gl.glUniformMatrix4fv( view_loc, 1, false, view, 0);
-		
-		uniforms.initialize( gl, program );
 		
 		Material.uploadAllTextures( gl );
 		System.out.println( "SUCCESS" );
@@ -100,10 +65,6 @@ public class View3D extends GLJPanel implements GLEventListener, MouseListener, 
 		
 		_tree.render( gl );
 		gl.glBindVertexArray( 0 );
-		
-		// Set timer parameter used by shader
-		gl.glUniform1f( timer_loc, timer );
-		gl.glUniformMatrix4fv( view_loc, 1, false, view, 0);
 		
 		int error = gl.glGetError();
 		if( error != 0 )
@@ -121,8 +82,8 @@ public class View3D extends GLJPanel implements GLEventListener, MouseListener, 
 		if( _valid )
 			render( gl );
 		
-		timer += 0.01f;
-		timer += Math.floor( timer );
+		ShaderProgram.timer += 0.01f;
+		ShaderProgram.timer += Math.floor( ShaderProgram.timer );
 	}
 
 	@Override
@@ -165,6 +126,28 @@ public class View3D extends GLJPanel implements GLEventListener, MouseListener, 
 	{
 		_recompile = true;
 	}
+	
+	public void updateTransformation()
+	{
+		float sinX = (float)Math.sin( rotX );
+		float sinY = (float)Math.sin( rotY );
+		float sinZ = (float)Math.sin( rotZ );
+		float cosX = (float)Math.cos( rotX );
+		float cosY = (float)Math.cos( rotY );
+		float cosZ = (float)Math.cos( rotZ );
+
+		ShaderProgram.view[0] = scale * (cosX * cosY);
+		ShaderProgram.view[1] = scale * (cosX * sinY * sinZ - sinX * cosZ);
+		ShaderProgram.view[2] = scale * (cosX * sinY * cosZ + sinX * sinZ);
+
+		ShaderProgram.view[4] = scale * (sinX * cosY);
+		ShaderProgram.view[5] = scale * (sinX * sinY * sinZ + cosX * cosZ);
+		ShaderProgram.view[6] = scale * (sinX * sinY * cosZ - cosX * sinZ);
+		
+		ShaderProgram.view[8] = scale * (-sinY);
+		ShaderProgram.view[9] = scale * (cosY * sinZ);
+		ShaderProgram.view[10] = scale * (cosY * cosZ);
+	}
 
 	@Override
 	public void mouseDragged( MouseEvent e ) 
@@ -174,27 +157,17 @@ public class View3D extends GLJPanel implements GLEventListener, MouseListener, 
 		lastX = e.getX();
 		lastY = e.getY();
 		
-		rotX += xOffset;
-		rotY += yOffset;
-		
-		float sinX = (float)Math.sin( rotX );
-		float sinY = (float)Math.sin( rotY );
-		float sinZ = (float)Math.sin( rotZ );
-		float cosX = (float)Math.cos( rotX );
-		float cosY = (float)Math.cos( rotY );
-		float cosZ = (float)Math.cos( rotZ );
-
-		view[0] = scale * (cosX * cosY);
-		view[1] = scale * (cosX * sinY * sinZ - sinX * cosZ);
-		view[2] = scale * (cosX * sinY * cosZ + sinX * sinZ);
-
-		view[4] = scale * (sinX * cosY);
-		view[5] = scale * (sinX * sinY * sinZ + cosX * cosZ);
-		view[6] = scale * (sinX * sinY * cosZ - cosX * sinZ);
-		
-		view[8] = scale * (-sinY);
-		view[9] = scale * (cosY * sinZ);
-		view[10] = scale * (cosY * cosZ);
+		if( buttonPress == MouseEvent.BUTTON1 )
+		{
+			rotX += xOffset;
+			rotY += yOffset;
+			updateTransformation();
+		}
+		else if( buttonPress == MouseEvent.BUTTON3 )
+		{
+			ShaderProgram.view[3] -= xOffset * 0.5f;
+			ShaderProgram.view[7] -= yOffset * 0.5f;
+		}
 	}
 
 	@Override
@@ -226,6 +199,7 @@ public class View3D extends GLJPanel implements GLEventListener, MouseListener, 
 	{
 		lastX = e.getX();
 		lastY = e.getY();
+		buttonPress = e.getButton();
 	}
 
 	@Override
@@ -237,6 +211,7 @@ public class View3D extends GLJPanel implements GLEventListener, MouseListener, 
 	@Override
 	public void mouseWheelMoved( MouseWheelEvent e )
 	{
-		scale += (e.getPreciseWheelRotation() * 0.01);
+		scale -= (e.getPreciseWheelRotation() * 0.01);
+		updateTransformation();
 	}
 }

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.JTree;
+import javax.swing.event.TreeModelEvent;
 import javax.swing.event.TreeModelListener;
 import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreePath;
@@ -21,7 +22,7 @@ public class ProjectTree extends JTree
 	{
 		super();
 		
-		root = new RootNode( "[ #0xB7DD09 ]" );
+		root = new Node( "[ #0xB7DD09 ]" );
 		this.editor = editor;
 		this.setModel( new ModelTreeModel() );
 		this.addMouseListener( new ModelTreeListener() );
@@ -34,7 +35,12 @@ public class ProjectTree extends JTree
 	
 	public void add( Node node )
 	{
-		root.add( node );
+		((ModelTreeModel)treeModel).add( node );
+		
+		// Re-create tree
+		this.setModel( new ModelTreeModel() );
+		for(int i = 0; i < getRowCount(); i++)
+	    	expandRow(i);
 	}
 	
 	public Node get( int index )
@@ -42,14 +48,9 @@ public class ProjectTree extends JTree
 		return root.children().get( index );
 	}
 	
-	public Node root()
-	{
-		return root;
-	}
-	
 	public boolean initialize( GL3 gl )
 	{
-		return root.initialize( gl );
+		return root.initialize( gl, new CompileStatus() );
 	}
 	
 	public void render( GL3 gl )
@@ -74,19 +75,6 @@ public class ProjectTree extends JTree
 		}
 	}
 	
-	private class RootNode extends AbstractNode
-	{
-		public RootNode(String name) 
-		{
-			super(name);
-		}
-
-		@Override
-		public EditorView createEditor()  { return null; }
-		@Override
-		public void setParent( Node node ) { }
-	}
-	
 	private class ModelTreeListener extends MouseAdapter
 	{
 		@Override
@@ -106,10 +94,21 @@ public class ProjectTree extends JTree
 	{
 		private List<TreeModelListener> _listeners = new ArrayList<>();
 		
+		
 		@Override
 		public Node getRoot() 
 		{
 			return root;
+		}
+		
+		public void add( Node node )
+		{
+			root.add( node );
+			for( TreeModelListener listener : _listeners )
+			{
+				listener.treeNodesInserted( new TreeModelEvent( this, new Node[]{ root, node } ) );
+				listener.treeNodesChanged( new TreeModelEvent( this, new Node[]{ root } ) );
+			}
 		}
 		
 		@Override

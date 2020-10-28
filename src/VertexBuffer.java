@@ -1,7 +1,7 @@
 import com.jogamp.common.nio.Buffers;
 import com.jogamp.opengl.GL3;
 
-public class VertexBuffer extends AbstractNode
+public class VertexBuffer extends Node
 {
 	public final static String TAG = "vertices";
 	
@@ -70,7 +70,7 @@ public class VertexBuffer extends AbstractNode
 	}
 	
 	@Override
-	public boolean initialize( GL3 gl )
+	public boolean initialize( GL3 gl, CompileStatus status )
 	{
 		if( _isLoaded ) dispose( gl );
 		
@@ -81,11 +81,22 @@ public class VertexBuffer extends AbstractNode
 		gl.glBindBuffer( GL3.GL_ARRAY_BUFFER, vbo[0] );
 		gl.glBufferData( GL3.GL_ARRAY_BUFFER, _buffer.length * Float.BYTES, Buffers.newDirectFloatBuffer( _buffer ), GL3.GL_STATIC_DRAW );
 
+		// TODO: Make linking less arbitrary
+		VertexAttribute attribute = VertexAttribute.parse( ((Shader)status.shader.children().get( 0 )).getCode() );
+		if( attribute == null || !attribute.isCompatibleWith( _stride ) )
+		{
+			System.err.println("Error - Incompatible attribute!");
+			return false;
+		}
+		
+		attribute.print();
+		attribute.bind( gl );
+		
 		_isLoaded = true;
 		
 		System.out.println( size() + " vertices loaded");
 		
-		return super.initialize( gl );
+		return super.initialize( gl, status );
 	}
 	
 	@Override

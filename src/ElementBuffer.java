@@ -1,7 +1,7 @@
 import com.jogamp.common.nio.Buffers;
 import com.jogamp.opengl.GL3;
 
-public class ElementBuffer extends AbstractNode
+public class ElementBuffer extends Node
 {
 	public final static String TAG = "elements";
 	
@@ -73,7 +73,7 @@ public class ElementBuffer extends AbstractNode
 	}
 	
 	@Override
-	public boolean initialize( GL3 gl )
+	public boolean initialize( GL3 gl, CompileStatus status )
 	{
 		if( _isLoaded ) dispose( gl );
 		
@@ -83,7 +83,7 @@ public class ElementBuffer extends AbstractNode
 	
 		_isLoaded = true;
 		
-		return super.initialize( gl );
+		return super.initialize( gl, status );
 	}
 	
 	@Override

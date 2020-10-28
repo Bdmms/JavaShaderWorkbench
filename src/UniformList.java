@@ -3,7 +3,7 @@ import java.util.List;
 
 import com.jogamp.opengl.GL3;
 
-public class UniformList extends AbstractNode
+public class UniformList extends Node
 {
 	private List<Uniform> uniforms = new ArrayList<>();
 	
@@ -18,7 +18,7 @@ public class UniformList extends AbstractNode
 		return new UniformTable( getPath(), this );
 	}
 	
-	public void initialize( GL3 gl, ShaderProgram program ) 
+	public boolean initialize( GL3 gl, CompileStatus status ) 
 	{
 		for( Uniform uniform : uniforms )
 		{
@@ -27,14 +27,20 @@ public class UniformList extends AbstractNode
 				try
 				{
 					int value = Integer.parseInt( uniform.value.toString() );
-					int loc = gl.glGetUniformLocation( program.getID(), uniform.name );
+					int loc = gl.glGetUniformLocation( status.shader.getID(), uniform.name );
 					gl.glUniform1i( loc, value );
 				}
-				catch( NumberFormatException e ) {}
+				catch( NumberFormatException e ) 
+				{
+					System.err.println( "Cannot parse attribute!" );
+					return false;
+				}
 			}
 			
 			System.out.println( uniform.name + ": " + uniform.value.toString() );
 		}
+		
+		return super.initialize( gl, status );
 	}
 	
 	public Uniform get( int index )

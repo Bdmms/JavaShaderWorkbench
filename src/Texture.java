@@ -32,6 +32,13 @@ public class Texture
 		this( new File( file ) );
 	}
 	
+	public Texture( String name, BufferedImage image )
+	{
+		filename = name;
+		_image = image;
+		_icon = new ImageIcon( _image );
+	}
+	
 	public void load( GL3 gl )
 	{
 		if( loaded ) return;

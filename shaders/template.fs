@@ -1,7 +1,10 @@
 #version 330 core
 out vec4 FragColor;
 
+in vec3 Position;
 in vec2 Texture;
+
+const vec3 light = vec3( 0.0, 0.0, -0.25 );
 
 uniform sampler2D diffuse;
 
@@ -12,5 +15,6 @@ void main()
 	if( color.a < 0.5 )
 		discard;
 
-	FragColor = vec4( color.rgb, 1.0 );
+	float intensity = 1.0 - length( light - Position );
+	FragColor = vec4( color.rgb * intensity, 1.0 );
 }

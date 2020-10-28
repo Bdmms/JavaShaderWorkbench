@@ -1,7 +1,7 @@
 
-public class Model extends Node
+public class BodyGroup extends Node
 {
-	public Model( String name )
+	public BodyGroup( String name )
 	{
 		super( name );
 	}
