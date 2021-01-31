@@ -3,121 +3,110 @@ import java.util.List;
 
 import com.jogamp.opengl.GL3;
 
-public class Node
+public class Node extends LeafNode
 {
-	private String name;
-	private Node parent = null;
-	private LinkedList<Node> children = new LinkedList<>();
+	private LinkedList<LeafNode> children = new LinkedList<>();
 	
 	public Node( String name )
 	{
-		this.name = name;
+		super( name );
 	}
 	
-	public EditorView createEditor()
-	{
-		return null;
-	}
-	
-	public String toString()
-	{
-		return name;
-	}
-	
-	public String getPath()
-	{
-		return parent == null ? name : parent.getPath() + "\\" + name;
-	}
-	
-	public List<Node> children() 
+	public List<LeafNode> children() 
 	{
 		return children;
 	}
 
-	public void add( Node node ) 
+	public void add( LeafNode node ) 
 	{
 		if( node == null ) return;
 		children.add( node );
 		node.setParent( this );
 	}
-
-	public void update() 
-	{ 
-		sort();
-		for( Node node : children )
-			node.update();
+	
+	public void sort()
+	{
+		children.sort( (n1, n2) -> Integer.compare( priorityOf( n1 ) , priorityOf( n2 ) ) );
 	}
 	
-	private void sort()
+	@Override
+	public boolean isCompiled()
 	{
-		children.sort( (n1, n2) -> {
-			return Integer.compare( priorityOf( n1 ) , priorityOf( n2 ) );
-		} );
-	}
-	
-	public boolean initialize( GL3 gl, CompileStatus status )
-	{
-		for( Node node : children )
+		boolean compiled = isCompiled;
+		for( LeafNode node : children() )
 		{
-			if ( !node.initialize( gl, status ) )
-				return false;
+			compiled &= node.isCompiled();
 		}
-		return true;
+		
+		return compiled;
 	}
 	
+	@Override
+	public void bind( GL3 gl )
+	{
+		for( LeafNode node : children )
+			node.bind( gl );
+	}
+	
+	@Override
 	public void render( GL3 gl )
 	{
-		for( Node node : children )
+		for( LeafNode node : children )
 			node.render( gl );
 	}
 	
+	@Override
 	public void dispose( GL3 gl )
 	{
-		for( Node node : children )
+		for( LeafNode node : children )
 			node.dispose( gl );
+		super.dispose( gl );
 	}
 	
-	public Node parent() 
+	/**
+	 * All children are rebuilt if one child changes
+	 */
+	public boolean build( GL3 gl )
 	{
-		return parent;
-	}
-	
-	public void setParent( Node node ) 
-	{
-		parent = node;
-	}
-	
-	public Node findAbove( Class<?> type )
-	{
-		if( parent == null || parent.getClass().equals( type ) ) return parent;
-
-		for( Node sibling : parent.children() )
+		int idx = 0;
+		for( LeafNode node : children )
 		{
-			if( sibling.getClass().equals( type ) )
-			{
-				return sibling;
-			}
+			if( !node.isCompiled() ) break;
+			
+			// If already compiled, then just bind the component
+			node.bind( gl );
+			idx++;
 		}
 		
-		return parent.findAbove( type );
-	}
-	
-	public Node findBelow( Class<?> type )
-	{
-		if( getClass().equals( type ) ) return this;
-
-		for( Node sibling : parent.children() )
+		for( ; idx < children.size(); idx++ )
 		{
-			if( sibling.getClass().equals( type ) )
-			{
-				return sibling;
-			}
+			if ( !children.get( idx ).compile( gl ) )
+				return false;
 		}
 		
-		return parent.findAbove( type );
+		return true;
 	}
 	
-	private static int priorityOf( Node node )
+	@Override
+	public boolean compile( GL3 gl )
+	{
+		for( LeafNode node : children )
+		{
+			if ( !node.compile( gl ) )
+				return false;
+		}
+		return super.compile( gl );
+	}
+	
+	@Override
+	public void upload( GL3 gl )
+	{
+		for( LeafNode node : children )
+			node.upload( gl );
+		super.upload( gl );
+	}
+	
+	private static int priorityOf( LeafNode node )
 	{
 		if( node instanceof Shader ) return -2;
 		if( node instanceof ShaderProgram ) return -1;

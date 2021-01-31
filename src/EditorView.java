@@ -3,6 +3,6 @@ import javax.swing.JComponent;
 public interface EditorView 
 {
 	public String getName();
-	public JComponent getComponent();
+	public LeafNode getModelSource();
 	public JComponent createView();
 }

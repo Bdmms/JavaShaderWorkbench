@@ -14,12 +14,6 @@ public class TextureEditor extends JLabel implements EditorView
 	}
 	
 	@Override
-	public JComponent getComponent() 
-	{
-		return this;
-	}
-	
-	@Override
 	public JComponent createView() 
 	{
 		return new JScrollPane( this );
@@ -29,5 +23,11 @@ public class TextureEditor extends JLabel implements EditorView
 	public String getName() 
 	{
 		return name;
+	}
+	
+	@Override 
+	public LeafNode getModelSource()
+	{
+		return null;
 	}
 }

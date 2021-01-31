@@ -108,5 +108,11 @@ public class MaterialTable extends EditorTable
 		{
 			return material.children().size();
 		}
+		
+		@Override 
+		public LeafNode getSource()
+		{
+			return material;
+		}
 	}
 }

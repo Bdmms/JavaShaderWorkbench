@@ -18,11 +18,6 @@ public class ElementTable extends EditorTable
 		((ElementTableModel)_model).addRow( v1, v2, v3 );
 	}
 	
-	public void replaceWith( int[] arr )
-	{
-		((ElementTableModel)_model).replaceWith( arr );
-	}
-	
 	@Override
 	protected void add() 
 	{
@@ -60,12 +55,6 @@ public class ElementTable extends EditorTable
 			} );
 			
 			this.buffer = buffer;
-		}
-		
-		public void replaceWith( int[] arr )
-		{
-			buffer.replace( arr );
-			updateTable( new TableModelEvent( this ) );
 		}
 		
 		@Override
@@ -113,6 +102,12 @@ public class ElementTable extends EditorTable
 		public int getRowCount() 
 		{
 			return buffer.size();
+		}
+		
+		@Override 
+		public LeafNode getSource()
+		{
+			return buffer;
 		}
 	}
 }

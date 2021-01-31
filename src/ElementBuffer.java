@@ -1,13 +1,15 @@
+import java.util.List;
+
 import com.jogamp.common.nio.Buffers;
 import com.jogamp.opengl.GL3;
 
-public class ElementBuffer extends Node
+import math.vec3i;
+
+public class ElementBuffer extends LeafNode
 {
 	public final static String TAG = "elements";
 	
 	private int[] _buffer;
-	private boolean _isLoaded = false;
-	
 	public int[] ebo = new int[1]; // Element buffer
 	
 	public ElementBuffer( int size )
@@ -27,14 +29,25 @@ public class ElementBuffer extends Node
 		return new ElementTable( getPath(), this );
 	}
 	
-	public void replace( int[] buffer )
+	public void replaceWith( List<vec3i> elements )
 	{
-		_buffer = buffer;
+		_buffer = new int[ elements.size() * 3 ];
+		int idx = 0;
+		for( vec3i vec : elements )
+		{
+			_buffer[idx++] = vec.x;
+			_buffer[idx++] = vec.y;
+			_buffer[idx++] = vec.z;
+		}
+		
+		isCompiled = false;
+		isModified = true;
 	}
 	
 	public void set( int triangle, int i, int value )
 	{
 		_buffer[ triangle * 3 + i ] = value;
+		isModified = true;
 	}
 	
 	public int get( int triangle, int i )
@@ -48,6 +61,9 @@ public class ElementBuffer extends Node
 		for( int i = 0; i < _buffer.length && i < size; i++ )
 			data[i] = _buffer[i];
 		_buffer = data;
+		
+		isCompiled = false;
+		isModified = true;
 	}
 	
 	public void add( int ... triangle )
@@ -65,25 +81,37 @@ public class ElementBuffer extends Node
 			_buffer[ index + i ] = triangle[i];
 	}
 	
-	public void set( int i, int v1, int v2, int v3 )
+	@Override
+	public boolean compile( GL3 gl )
 	{
-		_buffer[i++] = v1;
-		_buffer[i++] = v2;
-		_buffer[i  ] = v3;
+		if( isLoaded ) delete( gl );
+		return super.compile( gl );
 	}
 	
 	@Override
-	public boolean initialize( GL3 gl, CompileStatus status )
+	public void bind( GL3 gl )
 	{
-		if( _isLoaded ) dispose( gl );
-		
-		gl.glGenBuffers( 1, ebo, 0 );
 		gl.glBindBuffer( GL3.GL_ELEMENT_ARRAY_BUFFER, ebo[0] );
-		gl.glBufferData( GL3.GL_ELEMENT_ARRAY_BUFFER, _buffer.length * Integer.BYTES, Buffers.newDirectIntBuffer( _buffer ), GL3.GL_STATIC_DRAW );
+	}
 	
-		_isLoaded = true;
+	@Override
+	public void upload( GL3 gl )
+	{
+		if( !isLoaded )
+		{
+			System.out.println( "Initializing: " + getPath() + " (" + size() + " tris)" );
+			gl.glGenBuffers( 1, ebo, 0 );
+			gl.glBindBuffer( GL3.GL_ELEMENT_ARRAY_BUFFER, ebo[0] );
+			gl.glBufferData( GL3.GL_ELEMENT_ARRAY_BUFFER, _buffer.length * Integer.BYTES, Buffers.newDirectIntBuffer( _buffer ), GL3.GL_STATIC_DRAW );
+		}
+		else if( isModified )
+		{
+			System.out.println( "Uploading: " + getPath() + " (" + size() + " tris)" );
+			gl.glBindBuffer( GL3.GL_ELEMENT_ARRAY_BUFFER, ebo[0] );
+			gl.glBufferData( GL3.GL_ELEMENT_ARRAY_BUFFER, _buffer.length * Integer.BYTES, Buffers.newDirectIntBuffer( _buffer ), GL3.GL_STATIC_DRAW );
+		}
 		
-		return super.initialize( gl, status );
+		super.upload( gl );
 	}
 	
 	@Override
@@ -91,18 +119,21 @@ public class ElementBuffer extends Node
 	{
 		gl.glBindBuffer( GL3.GL_ELEMENT_ARRAY_BUFFER, ebo[0] );
 		gl.glDrawElements( GL3.GL_TRIANGLES, _buffer.length, GL3.GL_UNSIGNED_INT, 0 );
-		super.render( gl );
 	}
 	
 	@Override
 	public void dispose( GL3 gl )
 	{
+		if( !isLoaded ) return;
+		delete( gl );
 		super.dispose( gl );
-		
-		if( !_isLoaded ) return;
-		
+	}
+	
+	private void delete( GL3 gl )
+	{
+		System.out.println( "Deleting: " + getPath() );
 		gl.glDeleteBuffers( 1, Buffers.newDirectIntBuffer( ebo ) );
-		_isLoaded = false;
+		isLoaded = false;
 	}
 	
 	public int length()

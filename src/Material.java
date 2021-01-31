@@ -14,6 +14,7 @@ public class Material extends Node
 	public static final int DEFAULT_ID = 0;
 	public static final String DEFAULT = "default";
 	
+	/* All loaded textures */
 	private static HashMap<String, Texture> library = new HashMap<>();
 	
 	// Default textures
@@ -43,7 +44,7 @@ public class Material extends Node
 	@Override
 	public void render( GL3 gl )
 	{
-		for( Node texture : children() )
+		for( LeafNode texture : children() )
 		{
 			((BindedTexture)texture).bind( gl );
 		}
@@ -66,16 +67,47 @@ public class Material extends Node
 		return (BindedTexture)children().get( index );
 	}
 	
-	public static void setTexture( String name, Texture texture )
+	/**
+	 * Removes a loaded texture and deletes it from the GPU
+	 */
+	public static void deleteTexture( GL3 gl, String name )
 	{
+		Texture texture = library.get( name );
+		if( texture != null )
+		{
+			texture.delete( gl );
+			library.remove( name );
+		}
+	}
+	
+	/**
+	 * Deletes the existing texture with the same name and replaces it
+	 */
+	public static void replaceTexture( GL3 gl, String name, Texture texture )
+	{
+		deleteTexture( gl, name );
 		library.put( name, texture );
 	}
 	
-	public static Texture getTexture( String key )
+	/**
+	 * Returns a texture with the given name; will read file if the texture has not been loaded
+	 */
+	public static Texture loadTexture( String name )
 	{
-		return library.get( key );
+		Texture texture = library.get( name );
+		
+		if( texture == null )
+		{
+			texture = new Texture( new File( name ) );
+			library.put( name, texture );
+		}
+		
+		return texture;
 	}
 	
+	/**
+	 * Returns a texture with the given name; will read file if the texture has not been loaded
+	 */
 	public static Texture loadTexture( File file )
 	{
 		Texture texture = library.get( file.getName() );
@@ -89,7 +121,10 @@ public class Material extends Node
 		return texture;
 	}
 	
-	public static void uploadAllTextures( GL3 gl )
+	/**
+	 * Send all unloaded textures to the GPU.
+	 */
+	public static void uploadTextures( GL3 gl )
 	{
 		for( Texture texture : library.values() )
 		{
@@ -130,7 +165,7 @@ public class Material extends Node
 		return materials;
 	}
 	
-	public static class BindedTexture extends Node
+	public static class BindedTexture extends LeafNode
 	{
 		public Texture texture;
 		public int id;

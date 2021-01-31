@@ -1,31 +1,44 @@
 package math;
 
-public class vec3i 
+public class vec3i extends vec2i
 {
-	public int x; //v
-	public int y; //vt
-	public int z; //vn
+	public int z;
 	
-	public vec3i( String elements )
+	public vec3i()
 	{
-		String[] parts = elements.split( "/" );
-		x = Integer.parseInt( parts[0] ) - 1;
-		y = Integer.parseInt( parts[1] ) - 1;
-		z = Integer.parseInt( parts[2] ) - 1;
+		super();
+		z = 0;
 	}
 	
 	public vec3i( int x, int y, int z )
 	{
-		this.x = x;
-		this.y = y;
+		super( x, y );
 		this.z = z;
 	}
 	
+	public vec3i( String elements )
+	{
+		this( elements.split( "/" ) );
+	}
+	
+	public vec3i( String[] elements )
+	{
+		super( elements );
+		z = Integer.parseInt( elements[2] ) - 1;
+	}
+	
+	@Override
 	public boolean equals( Object o )
 	{
 		vec3i vec = (vec3i)o;
-		return  (x == vec.x || x == vec.x || x == vec.x) && 
-				(y == vec.y || y == vec.y || y == vec.y) &&
-				(z == vec.z || x == vec.z || z == vec.z);
+		return  (x == vec.x || x == vec.y || x == vec.z) && 
+				(y == vec.x || y == vec.y || y == vec.z) &&
+				(z == vec.x || x == vec.y || z == vec.z);
+	}
+	
+	@Override
+	public String toString()
+	{
+		return x + ", " + y + ", " + z;
 	}
 }

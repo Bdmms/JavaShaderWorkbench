@@ -44,9 +44,9 @@ public class VertexAttribute
 			GLDataType dataType = _attributes.get( i );
 			
 			if( dataType == null )
-				System.out.println( "layout (location = " + i + ") null" );
+				System.out.println( "\tlayout (location = " + i + ") null" );
 			else
-				System.out.println( "layout (location = " + i + ") in " + dataType.keyword + " (" + dataType.size + "x" + dataType.type + ");"  );
+				System.out.println( "\tlayout (location = " + i + ") in " + dataType.keyword + " (" + dataType.size + "x" + dataType.type + ");"  );
 		}
 	}
 	

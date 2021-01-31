@@ -1,16 +1,26 @@
 package math;
 
-public class mat3x4 extends mat3x3
+public class mat4x3 extends mat3x3
 {
-	vec3f v4;
+	public vec3f v4;
 	
-	public mat3x4(vec3f v1, vec3f v2, vec3f v3, vec3f v4) 
+	public mat4x3(vec3f v1, vec3f v2, vec3f v3, vec3f v4) 
 	{
 		super(v1, v2, v3);
 		this.v4 = v4;
 	}
+	
+	public vec3f intersection( Line line )
+	{
+		vec3f intr = toPlane().intersection( line );
+		
+		if( intr != null && intr != vec3f.UNDEFINED &&
+				intr.y >= 0.0f && intr.z >= 0.0f && intr.y <= 1.0f && intr.z <= 1.0f )
+			return line.getPoint( intr.x );
+		return null;
+	}
 
-	public boolean intersects( mat3x2 edge )
+	public boolean intersects( mat2x3 edge )
 	{
 		vec3f svec = vec3f.sub( v2, v1 );
 		vec3f tvec = vec3f.sub( v3, v1 );
@@ -48,16 +58,16 @@ public class mat3x4 extends mat3x3
 		return s >= 0.0f && t >= 0.0f && s <= 1.0f && t <= 1.0f;
 	}
 	
-	public boolean intersects( mat3x4 quad )
+	public boolean intersects( mat4x3 quad )
 	{
 		boolean o0 = quad.v1 == v1 || quad.v1 == v2 || quad.v1 == v3 || quad.v1 == v4;
 		boolean o1 = quad.v2 == v1 || quad.v2 == v2 || quad.v2 == v3 || quad.v2 == v4;
 		boolean o2 = quad.v3 == v1 || quad.v3 == v2 || quad.v3 == v3 || quad.v3 == v4;
 		boolean o3 = quad.v4 == v1 || quad.v4 == v2 || quad.v4 == v3 || quad.v4 == v4;
-		boolean e0Int = !o0 && !o1 && intersects( new mat3x2( quad.v1, quad.v2 ) );
-		boolean e1Int = !o0 && !o2 && intersects( new mat3x2( quad.v1, quad.v3 ) );
-		boolean e2Int = !o1 && !o3 && intersects( new mat3x2( quad.v2, quad.v4 ) );
-		boolean e3Int = !o2 && !o3 && intersects( new mat3x2( quad.v3, quad.v4 ) );
+		boolean e0Int = !o0 && !o1 && intersects( new mat2x3( quad.v1, quad.v2 ) );
+		boolean e1Int = !o0 && !o2 && intersects( new mat2x3( quad.v1, quad.v3 ) );
+		boolean e2Int = !o1 && !o3 && intersects( new mat2x3( quad.v2, quad.v4 ) );
+		boolean e3Int = !o2 && !o3 && intersects( new mat2x3( quad.v3, quad.v4 ) );
 		return e0Int || e1Int || e2Int || e3Int;
 	}
 	
@@ -67,7 +77,7 @@ public class mat3x4 extends mat3x3
 		vec3f v2 = new vec3f( 10.0f, 0.0f, 100.0f );
 		vec3f v3 = new vec3f( 0.0f, 10.0f, 100.0f );
 		vec3f v4 = new vec3f( 0.0f, 0.0f, 100.0f );
-		mat3x4 q0 = new mat3x4( v3, v2, v1, v4 );
+		mat4x3 q0 = new mat4x3( v3, v2, v1, v4 );
 		
 		vec3f v5 = new vec3f( 0.0f, 10.0f, 100.0f );
 		

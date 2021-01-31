@@ -8,10 +8,11 @@ out vec2 Texture;
 
 uniform float time;
 uniform mat4 view;
+uniform mat4 projection;
 
 void main()
 {
-	vec4 pos = vec4(position, 1.0) * view;
+	vec4 pos = vec4(position, 1.0) * view * projection;
 	Position = pos.xyz;
 	Texture = texture;
 	gl_Position = pos;

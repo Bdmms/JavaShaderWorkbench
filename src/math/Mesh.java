@@ -9,7 +9,7 @@ public class Mesh
 {
 	public List<vec3f> vertices = new ArrayList<>();
 	public List<vec3i> indices = new ArrayList<>();
-	public List<mat3x2> edges = new ArrayList<>();
+	public List<mat2x3> edges = new ArrayList<>();
 	public List<mat3x3> triangles = new ArrayList<>();
 	
 	public Mesh()
@@ -23,32 +23,7 @@ public class Mesh
 		complete();
 	}
 	
-	public Mesh( List<mat3x4> xmap, List<mat3x4> ymap, List<mat3x4> zmap )
-	{
-		for( mat3x4 q0 : xmap )
-		{
-			for( mat3x4 q1 : ymap )
-			{
-				if( q0.intersects( q1 ) )
-				{
-					//...
-				}
-				
-				/*
-				for( mat3x4 q2 : zmap )
-				{
-					vec3f vertex = mat3x3.intersection( q0, q1, q2 );
-					//if( q0.containsPoint( vertex ) || q1.containsPoint( vertex ) || q2.containsPoint( vertex ) )
-						
-					if( q0.intersects( q1 ) && q1.intersects( q2 ) && q2.intersects( q0 ) )
-						vertices.add( vertex );
-				}*/
-			}
-		}
-		
-		complete();
-	}
-	
+	@Deprecated
 	public void completeV2()
 	{
 		// clean vertices list
@@ -68,19 +43,19 @@ public class Mesh
 			i = 0;
 			for( vec3f v : vertices )
 				if( v != vertex && segments[i++] < avg )
-					edges.add( new mat3x2( vertex, v ) );
+					edges.add( new mat2x3( vertex, v ) );
 		}
 		
 		System.out.println( edges.size() + " edges created" );
 		
 		List<vec3f> ec = new ArrayList<>(6);
-		for( mat3x2 e1 : edges )
+		for( mat2x3 e1 : edges )
 		{
-			for( mat3x2 e2 : edges )
+			for( mat2x3 e2 : edges )
 			{
 				if( e1 == e2 || (e1.v1 != e2.v1 && e1.v1 != e2.v1)  ) continue;
 				
-				for( mat3x2 e3 : edges )
+				for( mat2x3 e3 : edges )
 				{
 					if( e1 == e3 || e2 == e3 ) continue;
 					
@@ -113,9 +88,7 @@ public class Mesh
 		
 		vec3f centre = vec3f.average( vertices );
 		
-		float MAX_ANGLE = 0.7f;
-		float MAX_AREA = 0.7f;
-		float MAX_PERIMETER = 1.2f;
+		float MAX_LENGTH = 1.44f;
 		
 		int v1Size = vertices.size() - 2;
 		int v2Size = vertices.size() - 1;
@@ -123,26 +96,27 @@ public class Mesh
 		for( int i0 = 0; i0 < v1Size; i0++ )
 		{
 			vec3f v0 = vertices.get( i0 );
-			vec3f vec0 = vec3f.sub( v0, centre );
 			for( int i1 = i0 + 1; i1 < v2Size; i1++ )
 			{
 				vec3f v1 = vertices.get( i1 );
-				vec3f vec1 = vec3f.sub( v1, centre );
+				vec3f vec0 = vec3f.sub( v1, v0 );
 				
-				if( vec0.dot( vec1 ) < MAX_ANGLE ) continue;
+				if( vec0.length() > MAX_LENGTH ) continue;
 				
 				for( int i2 = i1 + 1; i2 < v3Size; i2++ )
 				{
 					vec3f v2 = vertices.get( i2 );
-					vec3f vec2 = vec3f.sub( v2, centre );
+					vec3f vec1 = vec3f.sub( v2, v0 );
+					vec3f vec2 = vec3f.sub( v2, v1 );
 					
-					if( vec0.dot( vec2 ) < MAX_ANGLE || vec1.dot( vec2 ) < MAX_ANGLE ) continue;
+					if( vec1.length() > MAX_LENGTH || vec2.length() > MAX_LENGTH ) continue;
 					
-					mat3x3 triangle = new mat3x3( v0, v1, vertices.get( i2 ) );
+					mat3x3 triangle = new mat3x3( v0, v1, v2 );
+					vec3f outward = vec3f.sub( vec3f.average( v0, v1, v2 ), centre );
+					vec3f normal = triangle.normal();
 					float area = triangle.area();
-					float perm = triangle.perimeter();
 
-					if( area == 0.0f || area > MAX_AREA || perm > MAX_PERIMETER ) continue;
+					if( area == 0.0f || Math.abs( outward.dot( normal ) ) > 0.5f ) continue;
 					
 					boolean intersects = false;
 					for( mat3x3 t : triangles )

@@ -14,16 +14,6 @@ public class VertexTable extends EditorTable
 		super( title, new VertexTableModel( buffer ) );
 	}
 	
-	public void addVertex( float ... vertex )
-	{
-		((VertexTableModel)_model).addRow( vertex );
-	}
-	
-	public void replaceWith( float[] arr, int stride )
-	{
-		((VertexTableModel)_model).replaceWith( arr, stride );
-	}
-	
 	public VertexBuffer getBuffer()
 	{
 		return ((VertexTableModel)_model).buffer;
@@ -74,23 +64,24 @@ public class VertexTable extends EditorTable
 			updateTable( new TableModelEvent( this ) );
 		}
 		
-		public void replaceWith( float[] arr, int stride )
-		{
-			buffer.replace( arr, stride );
-			updateTable( new TableModelEvent( this ) );
-		}
-		
 		@Override
 		public void removeRow() 
 		{
-			buffer.resize( buffer.length() - buffer.stride() );
+			buffer.resize( buffer.capacity() - buffer.stride() );
 			updateTable( new TableModelEvent( this ) );
 		}
 		
 		@Override
 		public void setValueAt(Object value, int row, int col) 
 		{
-			buffer.set( row, col - 1, Float.parseFloat( value.toString() ) );
+			try
+			{
+				buffer.set( row, col - 1, Float.parseFloat( value.toString() ) );
+			}
+			catch( NumberFormatException e )
+			{
+				System.err.println( "Error - Cannot parse value!" );
+			}
 		}
 
 		@Override
@@ -107,6 +98,12 @@ public class VertexTable extends EditorTable
 		public int getRowCount() 
 		{
 			return buffer.size();
+		}
+		
+		@Override 
+		public LeafNode getSource()
+		{
+			return buffer;
 		}
 	}
 }

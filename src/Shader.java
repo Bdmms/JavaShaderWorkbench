@@ -1,7 +1,7 @@
 import com.jogamp.opengl.GL3;
 import com.jogamp.opengl.util.glsl.ShaderUtil;
 
-public class Shader extends Node
+public class Shader extends LeafNode
 {
 	private String[] _code = new String[1];
 	private int _type;
@@ -14,26 +14,34 @@ public class Shader extends Node
 		_type = type;
 	}
 	
+	@Override
 	public boolean compile( GL3 gl )
 	{
-		_id = gl.glCreateShader( _type );
-		gl.glShaderSource( _id, 1, _code, null );
-		gl.glCompileShader( _id );
+		System.out.println( "Compiling: " + getPath() );
+		int compiled = gl.glCreateShader( _type );
+		gl.glShaderSource( compiled, 1, _code, null );
+		gl.glCompileShader( compiled );
 		
 		final int[] compileStatus = { 1 };
-		gl.glGetShaderiv( _id, GL3.GL_COMPILE_STATUS, compileStatus, 0 );
+		gl.glGetShaderiv( compiled, GL3.GL_COMPILE_STATUS, compileStatus, 0 );
 		
 		if ( compileStatus[0] == GL3.GL_TRUE )
 		{
-			return true;
+			if( _id != -1 ) 
+				gl.glDeleteShader( _id );
+			
+			_id = compiled;
+			return super.compile( gl );
 		}
 		else
 		{
-			System.err.println( ShaderUtil.getShaderInfoLog( gl, _id ) );
+			gl.glDeleteShader( compiled );
+			System.err.println( ShaderUtil.getShaderInfoLog( gl, compiled ) );
 			return false;
 		}
 	}
 	
+	@Override
 	public void dispose( GL3 gl )
 	{
 		if( _id != -1 )
@@ -41,12 +49,18 @@ public class Shader extends Node
 			gl.glDeleteShader( _id );
 			_id = -1;
 		}
-		
-		super.dispose( gl );
+	}
+	
+	@Override
+	public EditorView createEditor() 
+	{
+		return new ShaderEditor( getPath(), this );
 	}
 	
 	public void setCode( String code )
 	{
+		isModified = true;
+		isCompiled = false;
 		_code[0] = code;
 	}
 	
@@ -59,10 +73,9 @@ public class Shader extends Node
 	{ 
 		return _id; 
 	}
-
-	@Override
-	public EditorView createEditor() 
-	{
-		return new ShaderEditor( getPath(), this );
+	
+	public int getType() 
+	{ 
+		return _type; 
 	}
 }

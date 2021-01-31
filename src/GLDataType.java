@@ -2,6 +2,7 @@ import com.jogamp.opengl.GL3;
 
 public enum GLDataType 
 {
+	UNKNOWN( 1, 0, "unknown" ),
 	IVEC1( 1, GL3.GL_INT, "int" ),
 	VEC1( 1, GL3.GL_FLOAT, "float" ),
 	DVEC1( 1, GL3.GL_DOUBLE, "double" ),
@@ -35,20 +36,20 @@ public enum GLDataType
 	{
 		switch( GL_TYPE )
 		{
-		case "float": 	return GLDataType.VEC1;
-		case "vec2": 	return GLDataType.VEC2;
-		case "vec3": 	return GLDataType.VEC3;
-		case "vec4": 	return GLDataType.VEC4;
-		case "double": 	return GLDataType.DVEC1;
-		case "dvec2": 	return GLDataType.DVEC2;
-		case "dvec3": 	return GLDataType.DVEC3;
-		case "dvec4": 	return GLDataType.DVEC4;
-		case "int": 	return GLDataType.IVEC1;
-		case "ivec2": 	return GLDataType.IVEC2;
-		case "ivec3": 	return GLDataType.IVEC3;
-		case "ivec4": 	return GLDataType.IVEC4;
-		case "sampler2D": 	return GLDataType.SAMP2D;
-		default: return null;
+		case "float": 	return VEC1;
+		case "vec2": 	return VEC2;
+		case "vec3": 	return VEC3;
+		case "vec4": 	return VEC4;
+		case "double": 	return DVEC1;
+		case "dvec2": 	return DVEC2;
+		case "dvec3": 	return DVEC3;
+		case "dvec4": 	return DVEC4;
+		case "int": 	return IVEC1;
+		case "ivec2": 	return IVEC2;
+		case "ivec3": 	return IVEC3;
+		case "ivec4": 	return IVEC4;
+		case "sampler2D": 	return SAMP2D;
+		default: return UNKNOWN;
 		}
 	}
 }

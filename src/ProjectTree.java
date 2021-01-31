@@ -22,7 +22,7 @@ public class ProjectTree extends JTree
 	{
 		super();
 		
-		root = new Node( "[ #0xB7DD09 ]" );
+		root = new Node( "#0xB7DD09" );
 		this.editor = editor;
 		this.setModel( new ModelTreeModel() );
 		this.addMouseListener( new ModelTreeListener() );
@@ -33,7 +33,7 @@ public class ProjectTree extends JTree
 		return editor;
 	}
 	
-	public void add( Node node )
+	public void add( LeafNode node )
 	{
 		((ModelTreeModel)treeModel).add( node );
 		
@@ -43,14 +43,19 @@ public class ProjectTree extends JTree
 	    	expandRow(i);
 	}
 	
-	public Node get( int index )
+	public LeafNode get( int index )
 	{
 		return root.children().get( index );
 	}
 	
-	public boolean initialize( GL3 gl )
+	public boolean build( GL3 gl )
 	{
-		return root.initialize( gl, new CompileStatus() );
+		return root.build( gl );
+	}
+	
+	public void upload( GL3 gl )
+	{
+		root.upload( gl );
 	}
 	
 	public void render( GL3 gl )
@@ -67,9 +72,9 @@ public class ProjectTree extends JTree
 	{
 		Object comp = path.getLastPathComponent();
 		
-		if( comp instanceof Node )
+		if( comp instanceof LeafNode )
 		{
-			EditorView view = ((Node)comp).createEditor();
+			EditorView view = ((LeafNode)comp).createEditor();
 			
 			if( view != null ) editor.open( view );
 		}
@@ -94,20 +99,19 @@ public class ProjectTree extends JTree
 	{
 		private List<TreeModelListener> _listeners = new ArrayList<>();
 		
-		
 		@Override
 		public Node getRoot() 
 		{
 			return root;
 		}
 		
-		public void add( Node node )
+		public void add( LeafNode node )
 		{
 			root.add( node );
 			for( TreeModelListener listener : _listeners )
 			{
-				listener.treeNodesInserted( new TreeModelEvent( this, new Node[]{ root, node } ) );
-				listener.treeNodesChanged( new TreeModelEvent( this, new Node[]{ root } ) );
+				listener.treeNodesInserted( new TreeModelEvent( this, new LeafNode[]{ root, node } ) );
+				listener.treeNodesChanged( new TreeModelEvent( this, new LeafNode[]{ root } ) );
 			}
 		}
 		
@@ -124,27 +128,27 @@ public class ProjectTree extends JTree
 		}
 
 		@Override
-		public Node getChild( Object parent, int index ) 
+		public LeafNode getChild( Object parent, int index ) 
 		{
-			return ((Node)parent).children().get( index );
+			return parent instanceof Node ? ((Node)parent).children().get( index ) : null;
 		}
 
 		@Override
 		public int getChildCount( Object parent ) 
 		{
-			return ((Node)parent).children().size();
+			return parent instanceof Node ? ((Node)parent).children().size() : 0;
 		}
  
 		@Override
 		public int getIndexOfChild( Object parent, Object child ) 
 		{
-			return ((Node)parent).children().indexOf( child );
+			return parent instanceof Node ? ((Node)parent).children().indexOf( child ) : -1;
 		}
 
 		@Override
 		public boolean isLeaf( Object node ) 
 		{
-			return ((Node)node).children().isEmpty();
+			return (node instanceof LeafNode) && !(node instanceof Node);
 		}
 
 		@Override

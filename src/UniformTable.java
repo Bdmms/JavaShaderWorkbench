@@ -1,5 +1,6 @@
 import javax.swing.DefaultCellEditor;
 import javax.swing.JTextField;
+import javax.swing.event.TableModelEvent;
 import javax.swing.JComboBox;
 import javax.swing.table.TableCellEditor;
 
@@ -65,7 +66,7 @@ public class UniformTable extends EditorTable
 		
 		public void addRow()
 		{
-			uniforms.add( "", GLDataType.VEC1, "" );
+			uniforms.add( "", GLDataType.VEC1 );
 		}
 		
 		@Override
@@ -75,14 +76,15 @@ public class UniformTable extends EditorTable
 		}
 		
 		@Override
-		public void setValueAt(Object value, int row, int col) 
+		public void setValueAt( Object value, int row, int col ) 
 		{
 			switch( col )
 			{
-			case 0: uniforms.get( row ).name = value.toString(); break;
-			case 1: uniforms.get( row ).type = (GLDataType) value; break;
-			case 2: uniforms.get( row ).setValue( value.toString() ); break;
+			case 0: uniforms.setName( row, value.toString() ); break;
+			case 1: uniforms.swapType( row, (GLDataType)value );  break;
+			case 2: uniforms.setValue( row, value.toString() ); break;
 			}
+			updateTable( new TableModelEvent( this, row ) );
 		}
 
 		@Override
@@ -92,7 +94,7 @@ public class UniformTable extends EditorTable
 			{
 			case 0: return uniforms.get( row ).name;
 			case 1: return uniforms.get( row ).type;
-			case 2: return uniforms.get( row ).value;
+			case 2: return uniforms.get( row ).getValue();
 			default: return null;
 			}
 		}
@@ -101,6 +103,12 @@ public class UniformTable extends EditorTable
 		public int getRowCount() 
 		{
 			return uniforms.size();
+		}
+		
+		@Override 
+		public LeafNode getSource()
+		{
+			return uniforms;
 		}
 	}
 }

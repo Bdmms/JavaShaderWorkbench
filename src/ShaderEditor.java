@@ -34,14 +34,14 @@ public class ShaderEditor extends JTextArea implements EditorView, CaretListener
 	}
 
 	@Override
-	public JComponent getComponent() 
-	{
-		return this;
-	}
-
-	@Override
 	public void caretUpdate(CaretEvent e) 
 	{
 		shader.setCode( getText() );
+	}
+	
+	@Override 
+	public LeafNode getModelSource()
+	{
+		return shader;
 	}
 }

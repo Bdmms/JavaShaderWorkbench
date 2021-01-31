@@ -42,6 +42,12 @@ public abstract class EditorTable extends JTable implements EditorView
 	protected abstract void add();
 	protected abstract void remove();
 	
+	@Override
+	public LeafNode getModelSource()
+	{
+		return _model.getSource();
+	}
+	
 	public JComponent createView()
 	{
 		JPanel panel = new JPanel( new BorderLayout() );
@@ -72,11 +78,6 @@ public abstract class EditorTable extends JTable implements EditorView
 		panel.add( buttons, BorderLayout.SOUTH );
 		
 		return panel;
-	}
-	
-	public JComponent getComponent()
-	{
-		return this;
 	}
 	
 	public ObserverTableModel getEditorModel()
@@ -164,6 +165,7 @@ public abstract class EditorTable extends JTable implements EditorView
 			return _columns.get( col ).editable;
 		}
 		
+		public abstract LeafNode getSource();
 		public abstract void removeRow();
 		public abstract void setValueAt(Object value, int row, int col);
 		public abstract Object getValueAt( int row, int col );

@@ -1,20 +1,28 @@
+import java.util.List;
+
 import com.jogamp.common.nio.Buffers;
 import com.jogamp.opengl.GL3;
 
-public class VertexBuffer extends Node
+public class VertexBuffer extends LeafNode
 {
 	public final static String TAG = "vertices";
 	
+	private VertexAttribute _attribute = null;
+	
 	private float[] _buffer;
+	private int _size = 0;
 	private int _stride = 0;
-	private boolean _isLoaded = false;
 	
-	public int[] vbo = new int[1]; // Vertex buffer
-	public int[] vao = new int[1]; // Vertex array
+	private int[] _currentShader = new int[1];
+	public int[] vbo = { -1 }; // Vertex buffer
+	public int[] vao = { -1 }; // Vertex array
 	
-	public VertexBuffer( int size, int stride ) 
+	public VertexBuffer( int capacity, int stride ) 
 	{ 
-		this( new float[ size * stride ], stride );
+		super( TAG );
+		_buffer = new float[ capacity * stride ];
+		_stride = stride;
+		_size = 0;
 	}
 	
 	public VertexBuffer( float[] buffer, int stride )
@@ -22,6 +30,7 @@ public class VertexBuffer extends Node
 		super( TAG );
 		_buffer = buffer;
 		_stride = stride;
+		_size = buffer.length / stride;
 	}
 	
 	@Override
@@ -30,18 +39,15 @@ public class VertexBuffer extends Node
 		return new VertexTable( getPath(), this );
 	}
 	
-	public void replace( float[] buffer, int stride )
-	{
-		_buffer = buffer;
-		_stride = stride;
-	}
-	
 	public void resize( int size )
 	{
 		float[] data = new float[size];
 		for( int i = 0; i < _buffer.length && i < size; i++ )
 			data[i] = _buffer[i];
 		_buffer = data;
+		_size = _buffer.length / _stride;
+		isCompiled = false;
+		isModified = true;
 	}
 	
 	public void add( float ... vertex )
@@ -67,62 +73,131 @@ public class VertexBuffer extends Node
 	public void set( int vertIdx, int element, float value )
 	{
 		_buffer[ vertIdx * _stride + element ] = value;
+		isModified = true;
 	}
 	
 	@Override
-	public boolean initialize( GL3 gl, CompileStatus status )
+	public boolean compile( GL3 gl )
 	{
-		if( _isLoaded ) dispose( gl );
+		if( isLoaded ) delete( gl );
 		
-		gl.glGenVertexArrays( 1, vao, 0 );
-		gl.glGenBuffers( 1, vbo, 0 );
+		System.out.println( "Compiling: " + getPath() );
+		gl.glGetIntegerv( GL3.GL_CURRENT_PROGRAM, _currentShader, 0 );
 		
-		gl.glBindVertexArray( vao[0] );
-		gl.glBindBuffer( GL3.GL_ARRAY_BUFFER, vbo[0] );
-		gl.glBufferData( GL3.GL_ARRAY_BUFFER, _buffer.length * Float.BYTES, Buffers.newDirectFloatBuffer( _buffer ), GL3.GL_STATIC_DRAW );
-
-		// TODO: Make linking less arbitrary
-		VertexAttribute attribute = VertexAttribute.parse( ((Shader)status.shader.children().get( 0 )).getCode() );
-		if( attribute == null || !attribute.isCompatibleWith( _stride ) )
+		ShaderProgram program = ShaderProgram.find( _currentShader[0] );
+		if( program == null )
 		{
-			System.err.println("Error - Incompatible attribute!");
+			System.err.println( "Error - Shader Program not defined" );
 			return false;
 		}
 		
-		attribute.print();
-		attribute.bind( gl );
+		Shader vShader = program.getShaderComponent( GL3.GL_VERTEX_SHADER );
+		if( vShader == null )
+		{
+			System.err.println( "Error - Vertex Shader not defined" );
+			return false;
+		}
 		
-		_isLoaded = true;
+		_attribute = VertexAttribute.parse( vShader.getCode() );
+		if( _attribute == null || !_attribute.isCompatibleWith( _stride ) )
+		{
+			System.err.println( "Error - Incompatible attribute!" );
+			return false;
+		}
 		
-		System.out.println( size() + " vertices loaded");
+		_attribute.print();
+		return super.compile( gl );
+	}
+	
+	@Override
+	public void bind( GL3 gl )
+	{
+		gl.glBindVertexArray( vao[0] );
+		gl.glBindBuffer( GL3.GL_ARRAY_BUFFER, vbo[0] );
+	}
+	
+	@Override
+	public void upload( GL3 gl )
+	{
+		if( !isLoaded )
+		{
+			System.out.println( "Initializing: " + getPath() + " (" + size() + " vertices)" );
+			gl.glGenVertexArrays( 1, vao, 0 );
+			gl.glGenBuffers( 1, vbo, 0 );
 		
-		return super.initialize( gl, status );
+			gl.glBindVertexArray( vao[0] );
+			gl.glBindBuffer( GL3.GL_ARRAY_BUFFER, vbo[0] );
+			gl.glBufferData( GL3.GL_ARRAY_BUFFER, _buffer.length * Float.BYTES, Buffers.newDirectFloatBuffer( _buffer ), GL3.GL_STATIC_DRAW );
+			
+			_attribute.bind( gl );
+		}
+		else if( isModified )
+		{
+			System.out.println( "Uploading: " + getPath() + " (" + size() + " vertices)" );
+			gl.glBindVertexArray( vao[0] );
+			gl.glBindBuffer( GL3.GL_ARRAY_BUFFER, vbo[0] );
+			gl.glBufferSubData( GL3.GL_ARRAY_BUFFER, 0, _buffer.length * Float.BYTES, Buffers.newDirectFloatBuffer( _buffer ) );
+		}
+		
+		super.upload( gl );
+	}
+	
+	public <T extends Vertex> void update( GL3 gl, List<T> vertices )
+	{
+		int currentCapacity = vertices.size() * _stride;
+		_size = vertices.size();
+		
+		gl.glBindVertexArray( vao[0] );
+		gl.glBindBuffer( GL3.GL_ARRAY_BUFFER, vbo[0] );
+		
+		if( _buffer.length >= currentCapacity )
+		{
+			for( int i = 0; i < vertices.size(); i++ )
+			{
+				Vertex vertex = vertices.get( i );
+				
+				if( vertex.isModified() )
+				{
+					int index = i * _stride;
+					vertex.writeDataBuffer( _buffer, index );
+					gl.glBufferSubData( GL3.GL_ARRAY_BUFFER, index * Float.BYTES, _stride * Float.BYTES, Buffers.newDirectFloatBuffer( _buffer, index ) );
+				}
+			}
+		}
+		else
+		{
+			_buffer = new float[ _buffer.length * 2 ];
+			for( int i = 0; i < vertices.size(); i++ )
+			{
+				Vertex vertex = vertices.get( i );
+				
+				if( vertex.isModified() )
+					vertex.writeDataBuffer( _buffer, i * _stride );
+			}
+			
+			gl.glBufferData( GL3.GL_ARRAY_BUFFER, _buffer.length * Float.BYTES, Buffers.newDirectFloatBuffer( _buffer ), GL3.GL_DYNAMIC_DRAW );
+		}
 	}
 	
 	@Override
 	public void render( GL3 gl )
 	{
 		gl.glBindVertexArray( vao[0] );
-		
-		super.render( gl );
 	}
 	
 	@Override
 	public void dispose( GL3 gl )
 	{
+		delete( gl );
 		super.dispose( gl );
-		
-		if( !_isLoaded ) return;
-		
-		gl.glDeleteBuffers( 1, Buffers.newDirectIntBuffer( vbo ) );
-		gl.glDeleteVertexArrays( 1, Buffers.newDirectIntBuffer( vao ) );
-		_isLoaded = false;
 	}
 	
-	public void set( int i, float ... vertex )
+	private void delete( GL3 gl )
 	{
-		for( float value : vertex )
-			_buffer[i++] = value;
+		System.out.println( "Deleting: " + getPath() );
+		gl.glDeleteBuffers( 1, Buffers.newDirectIntBuffer( vbo ) );
+		gl.glDeleteVertexArrays( 1, Buffers.newDirectIntBuffer( vao ) );
+		isLoaded = false;
 	}
 	
 	public int stride() 
@@ -132,10 +207,10 @@ public class VertexBuffer extends Node
 	
 	public int size()
 	{
-		return _buffer.length / _stride;
+		return _size;
 	}
 	
-	public int length()
+	public int capacity()
 	{
 		return _buffer.length;
 	}

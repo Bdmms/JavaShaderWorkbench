@@ -12,11 +12,10 @@ import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL3;
 
 import math.vec3i;
-import math.mat3x2;
 import math.Line;
 import math.Mesh;
 import math.mat3x3;
-import math.mat3x4;
+import math.mat4x3;
 import math.vec2f;
 import math.vec3f;
 
@@ -34,9 +33,9 @@ public class ModelUtils
 		}
 	}
 	
-	public static List<mat3x4> extrude( List<vec2f> map, byte mapType )
+	public static List<mat4x3> extrude( List<vec2f> map, byte mapType )
 	{
-		List<mat3x4> mesh = new ArrayList<>();
+		List<mat4x3> mesh = new ArrayList<>();
 		
 		vec3f lastHigh = vec3f.map( map.get( 0 ), 1.0f, mapType );
 		vec3f lastLow = vec3f.map( map.get( 0 ), -1.0f, mapType );
@@ -44,7 +43,7 @@ public class ModelUtils
 		{
 			vec3f high = vec3f.map( map.get( i ), 1.0f, mapType );
 			vec3f low = vec3f.map( map.get( i ), -1.0f, mapType );
-			mesh.add( new mat3x4( lastLow, lastHigh, low, high ) );
+			mesh.add( new mat4x3( lastLow, lastHigh, low, high ) );
 			lastHigh = high;
 			lastLow = low;
 		}
@@ -67,10 +66,9 @@ public class ModelUtils
 	
 	public static Model createSphere( double dAngle )
 	{
-		Mesh mesh = new Mesh();
-		
-		mesh.vertices.add( new vec3f( 0.0f, 0.0f, -1.0f ) );
-		mesh.vertices.add( new vec3f( 0.0f, 0.0f, 1.0f ) );
+		List<vec3f> vertices = new ArrayList<>();
+		vertices.add( new vec3f( 0.0f, 0.0f, -1.0f ) );
+		vertices.add( new vec3f( 0.0f, 0.0f, 1.0f ) );
 		
 		double halfPI = Math.PI / 2.0;
 		double PI2 = Math.PI * 2.0;
@@ -82,12 +80,11 @@ public class ModelUtils
 				float x = cosPhi * (float)Math.cos( theta );
 				float y = cosPhi * (float)Math.sin( theta );
 				float z = (float)Math.sin( phi );
-				mesh.vertices.add( new vec3f( x, y, z ) );
+				vertices.add( new vec3f( x, y, z ) );
 			}
 		}
 		
-		mesh.completeV2();
-		return createFrom( mesh );
+		return createFrom( new Mesh( vertices ) );
 	}
 	
 	public static Model createCube()
@@ -111,13 +108,41 @@ public class ModelUtils
 			});
 	}
 	
-	public static Model createFromOrthographicView2( List<vec2f> xmap, List<vec2f> ymap, List<vec2f> zmap )
+	public static Model createFromOrthographicView( List<vec2f> xmap, List<vec2f> zmap )
 	{
-		return createFrom( new Mesh( 
-				extrude( xmap, vec2f.YZPLANE ), 
-				extrude( xmap, vec2f.XZPLANE ), 
-				extrude( xmap, vec2f.XYPLANE ) 
-		) );
+		List<mat4x3> ext1 = extrude( xmap, vec2f.YZPLANE );
+		List<mat4x3> ext0 = extrude( zmap, vec2f.XYPLANE );
+		List<vec3f> vertices = new ArrayList<>();
+		
+		// X on Z
+		for( int i = 1; i < ext1.size(); i++ )
+		{
+			vec3f low = ext1.get( i ).v3;
+			vec3f high = ext1.get( i ).v4;
+			Line line = new Line( low, vec3f.sub( high, low ) );
+			
+			for( mat4x3 face : ext0 )
+			{
+				vec3f intr = face.intersection( line );
+				if( intr != null ) vertices.add( intr );
+			}
+		}
+		
+		// Z on X
+		for( int i = 1; i < ext0.size(); i++ )
+		{
+			vec3f low = ext0.get( i ).v3;
+			vec3f high = ext0.get( i ).v4;
+			Line line = new Line( low, vec3f.sub( high, low ) );
+			
+			for( mat4x3 face : ext1 )
+			{
+				vec3f intr = face.intersection( line );
+				if( intr != null ) vertices.add( intr );
+			}
+		}
+		
+		return createFrom( new Mesh( vertices ) );
 	}
 	
 	public static Model createFromOrthographicView( List<vec2f> xmap, List<vec2f> ymap, List<vec2f> zmap )
@@ -169,6 +194,15 @@ public class ModelUtils
 		return createFrom( mesh2 );
 	}
 	
+	public static Model join( List<vec2f> xmap, List<vec2f> ymap, List<vec2f> zmap )
+	{
+		List<vec3f> vertices = new ArrayList<>();
+		for( vec2f v : xmap ) vertices.add( vec3f.map( v, 0.0f, vec2f.YZPLANE ) );
+		for( vec2f v : ymap ) vertices.add( vec3f.map( v, 0.0f, vec2f.XZPLANE ) );
+		for( vec2f v : zmap ) vertices.add( vec3f.map( v, 0.0f, vec2f.XYPLANE ) );
+		return createFrom( new Mesh( vertices ) );
+	}
+	
 	public static Model createFrom( Mesh mesh )
 	{
 		float[] vBuffer = new float[ mesh.vertices.size() * 8 ];
@@ -202,16 +236,15 @@ public class ModelUtils
 	{
 		Model model = new Model( name );
 		
-		model.add( new VertexBuffer( vBuffer, 8 ) );
-		
 		Material material = new Material( "default" );
-		material.add( Material.getTexture( Material.DEFAULT ), GL3.GL_TEXTURE0 );
+		material.add( Material.loadTexture( Material.DEFAULT ), GL3.GL_TEXTURE0 );
 		
 		BodyGroup mesh = new BodyGroup( "mesh" );
 		mesh.add( new ElementBuffer( eBuffer ) );
 		mesh.add( material );
+		
+		model.add( new VertexBuffer( vBuffer, 8 ) );
 		model.add( mesh );
-		model.update();
 		
 		return model;
 	}
@@ -232,17 +265,22 @@ public class ModelUtils
 		}
 	}
 	
+	public static void saveObjFile( Mesh mesh )
+	{
+		
+	}
+	
 	public static Model readObjFileDirect( File file ) throws IOException
 	{
 		BufferedReader reader = new BufferedReader( new FileReader( file ) );
 		
 		String dir = file.getAbsolutePath().substring( 0, file.getAbsolutePath().lastIndexOf( '\\' ) ) + "\\";
-		Model model = new Model( file.getName() );
 		
 		List<vec3f> position = new ArrayList<>();
 		List<vec3f> normals = new ArrayList<>();
 		List<vec3f> textCoord = new ArrayList<>();
 		List<Integer> indices = new ArrayList<>();
+		List<BodyGroup> groups = new ArrayList<>();
 		BodyGroup current = null;
 		
 		HashMap<String, Material> materialList = null;
@@ -261,11 +299,11 @@ public class ModelUtils
 					if( current != null )
 					{
 						current.add( new ElementBuffer( indices.stream().mapToInt( i -> i ).toArray() ) );
-						model.add( current );
 						indices.clear();
 					}
 					
 					current = new BodyGroup( line.substring( line.indexOf( ' ' ) + 1 ) );
+					groups.add( current );
 				}
 				break;
 			
@@ -288,7 +326,7 @@ public class ModelUtils
 				{
 					String filename = line.substring( line.lastIndexOf( '\\' ) + 1 );
 					String name = filename.substring( 0, filename.lastIndexOf( '.' ) );
-					Texture texture = Material.loadTexture( new File( dir + filename ) );
+					Texture texture = Material.loadTexture( dir + filename );
 					current.add( new Material( name, texture, GL.GL_TEXTURE0 ) );
 				}
 				else
@@ -305,7 +343,7 @@ public class ModelUtils
 		if( current != null )
 		{
 			current.add( new ElementBuffer( indices.stream().mapToInt( i -> i ).toArray() ) );
-			model.add( current );
+			groups.add( current );
 			indices.clear();
 		}
 		
@@ -327,8 +365,11 @@ public class ModelUtils
 			buffer[idx++] = txt.y;
 		}
 		
+		Model model = new Model( file.getName() );
 		model.add( new VertexBuffer( buffer, 8 ) );
-		model.update();
+		
+		for( BodyGroup group : groups )
+			model.add( group );
 		
 		reader.close();
 		
@@ -346,6 +387,7 @@ public class ModelUtils
 		List<vec3f> normals = new ArrayList<>();
 		List<vec3f> textCoord = new ArrayList<>();
 		List<Group> groups = new ArrayList<>();
+		List<BodyGroup> meshes = new ArrayList<>();
 		Group current = null;
 		
 		HashMap<String, Material> materialList = null;
@@ -384,7 +426,7 @@ public class ModelUtils
 				{
 					String filename = line.substring( line.lastIndexOf( '\\' ) + 1 );
 					String name = filename.substring( 0, filename.lastIndexOf( '.' ) );
-					Texture texture = Material.loadTexture( new File( dir + filename ) );
+					Texture texture = Material.loadTexture( dir + filename );
 					current.material = new Material( name, texture, GL.GL_TEXTURE0 );
 				}
 				else
@@ -435,11 +477,13 @@ public class ModelUtils
 			BodyGroup mesh = new BodyGroup( group.name );
 			mesh.add( new ElementBuffer( indices ) );
 			mesh.add( group.material );
-			model.add( mesh );
+			meshes.add( mesh );
 		}
 		
 		model.add( new VertexBuffer( buffer, 8 ) );
-		model.update();
+		
+		for( BodyGroup group : meshes )
+			model.add( group );
 		
 		reader.close();
 		
