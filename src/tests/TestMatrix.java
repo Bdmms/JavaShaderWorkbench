@@ -1,8 +1,8 @@
 package tests;
 
-import math.Matrix;
-import math.MatrixColor;
-import math.vec4f;
+import swb.math.Matrix;
+import swb.math.MatrixColor;
+import swb.math.vec4f;
 
 public class TestMatrix 
 {

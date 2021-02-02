@@ -1,7 +1,7 @@
 package tests;
 
-import math.Circle;
-import math.vec3f;
+import swb.math.Circle;
+import swb.math.vec3f;
 
 public class TestCircle 
 {

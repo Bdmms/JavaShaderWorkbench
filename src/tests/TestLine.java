@@ -1,7 +1,7 @@
 package tests;
 
-import math.Line;
-import math.vec3f;
+import swb.math.Line;
+import swb.math.vec3f;
 
 public class TestLine 
 {
