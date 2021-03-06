@@ -1,29 +1,35 @@
 package swb;
 import java.util.List;
 
+import javax.swing.JPopupMenu;
+
 import com.jogamp.common.nio.Buffers;
 import com.jogamp.opengl.GL3;
 
+import swb.dialog.TransformDialog;
 import swb.editors.EditorView;
 import swb.editors.VertexTable;
+import swb.math.mat4x4;
 
+/**
+ * Stores the vertices in a buffer.
+ */
 public class VertexBuffer extends GLNode
 {
 	public final static String TAG = "vertices";
 	
-	private VertexAttribute _attribute = null;
+	VertexAttribute _linkedAttribute = null;
 	
-	private float[] _buffer;
-	private int _size = 0;
-	private int _stride = 0;
+	protected float[] _buffer;
+	protected int _size = 0;
+	protected int _stride = 0;
 	
-	private int[] _currentShader = new int[1];
 	public int[] vbo = { -1 }; // Vertex buffer
 	public int[] vao = { -1 }; // Vertex array
 	
 	public VertexBuffer( int capacity, int stride ) 
 	{ 
-		super( TAG );
+		super( TAG, ID_ARRAY | ID_BUFFER, true );
 		_buffer = new float[ capacity * stride ];
 		_stride = stride;
 		_size = 0;
@@ -31,7 +37,7 @@ public class VertexBuffer extends GLNode
 	
 	public VertexBuffer( float[] buffer, int stride )
 	{
-		super( TAG );
+		super( TAG, ID_ARRAY | ID_BUFFER, true );
 		_buffer = buffer;
 		_stride = stride;
 		_size = buffer.length / stride;
@@ -43,6 +49,11 @@ public class VertexBuffer extends GLNode
 		return new VertexTable( getPath(), this );
 	}
 	
+	public void setVertexAttribute( VertexAttribute atr )
+	{
+		_linkedAttribute = atr;
+	}
+	
 	public void resize( int size )
 	{
 		float[] data = new float[size];
@@ -50,8 +61,8 @@ public class VertexBuffer extends GLNode
 			data[i] = _buffer[i];
 		_buffer = data;
 		_size = _buffer.length / _stride;
-		isCompiled = false;
-		isModified = true;
+		modifyFlag = true;
+		deleteFlag = true;
 	}
 	
 	public void add( float ... vertex )
@@ -77,45 +88,67 @@ public class VertexBuffer extends GLNode
 	public void set( int vertIdx, int element, float value )
 	{
 		_buffer[ vertIdx * _stride + element ] = value;
-		isModified = true;
+		modifyFlag = true;
 	}
 	
-	public void transformBy( float[] transform )
+	public void flipNormals( int atr )
 	{
-		
+		for( int i = 0; i < _buffer.length; i += _stride )
+		{
+			int j = i + atr;
+			_buffer[j++] *= -1.0f;
+			_buffer[j++] *= -1.0f;
+			_buffer[j++] *= -1.0f;
+		}
+		modifyFlag = true;
+	}
+	
+	public void calculateNormals( int pAtr, int nAtr )
+	{
+		modifyFlag = true;
+	}
+	
+	public void transformBy( mat4x4 transform, int atr )
+	{
+		for( int i = 0; i < _buffer.length; i += _stride )
+		{
+			transform.transform( _buffer, i + atr );
+		}
+		modifyFlag = true;
 	}
 	
 	@Override
-	public boolean compile( GL3 gl )
+	public boolean build( Renderer renderer )
 	{
-		if( isLoaded ) delete( gl );
+		compileFlag = true;
+		ShaderProgram program = (ShaderProgram)renderer.instances[LAST_PROGRAM];
 		
-		System.out.println( "Compiling: " + getPath() );
-		gl.glGetIntegerv( GL3.GL_CURRENT_PROGRAM, _currentShader, 0 );
-		
-		ShaderProgram program = ShaderProgram.find( _currentShader[0] );
 		if( program == null )
 		{
 			System.err.println( "Error - Shader Program not defined" );
 			return false;
 		}
 		
-		Shader vShader = program.getShaderComponent( GL3.GL_VERTEX_SHADER );
+		if( program.compileFlag ) return true;
+		
+		ShaderCode vShader = program.getShaderComponent( GL3.GL_VERTEX_SHADER );
 		if( vShader == null )
 		{
 			System.err.println( "Error - Vertex Shader not defined" );
 			return false;
 		}
 		
-		_attribute = VertexAttribute.parse( vShader.getCode() );
-		if( _attribute == null || !_attribute.isCompatibleWith( _stride ) )
+		System.out.println( "Building: " + getPath() );
+		
+		_linkedAttribute = VertexAttribute.parse( vShader.getCode() );
+		if( _linkedAttribute == null || !_linkedAttribute.isCompatibleWith( _stride ) )
 		{
-			System.err.println( "Error - Incompatible attribute!" );
+			System.err.println( "Error - Incompatible attributes!" );
 			return false;
 		}
 		
-		_attribute.print();
-		return super.compile( gl );
+		_linkedAttribute.print();
+		return true;
 	}
 	
 	@Override
@@ -126,11 +159,13 @@ public class VertexBuffer extends GLNode
 	}
 	
 	@Override
-	public void upload( GL3 gl )
+	public void update( GL3 gl )
 	{
-		if( !isLoaded )
+		if( deleteFlag ) delete( gl );
+		
+		if( !initFlag )
 		{
-			System.out.println( "Initializing: " + getPath() + " (" + size() + " vertices)" );
+			System.out.println( "Initializing: " + getPath() + " (" + length() + " vertices)" );
 			gl.glGenVertexArrays( 1, vao, 0 );
 			gl.glGenBuffers( 1, vbo, 0 );
 		
@@ -138,17 +173,17 @@ public class VertexBuffer extends GLNode
 			gl.glBindBuffer( GL3.GL_ARRAY_BUFFER, vbo[0] );
 			gl.glBufferData( GL3.GL_ARRAY_BUFFER, _buffer.length * Float.BYTES, Buffers.newDirectFloatBuffer( _buffer ), GL3.GL_STATIC_DRAW );
 			
-			_attribute.bind( gl );
+			_linkedAttribute.bind( gl );
 		}
-		else if( isModified )
+		else if( modifyFlag )
 		{
-			System.out.println( "Uploading: " + getPath() + " (" + size() + " vertices)" );
+			System.out.println( "Uploading: " + getPath() + " (" + length() + " vertices)" );
 			gl.glBindVertexArray( vao[0] );
 			gl.glBindBuffer( GL3.GL_ARRAY_BUFFER, vbo[0] );
 			gl.glBufferSubData( GL3.GL_ARRAY_BUFFER, 0, _buffer.length * Float.BYTES, Buffers.newDirectFloatBuffer( _buffer ) );
 		}
 		
-		super.upload( gl );
+		super.update( gl );
 	}
 	
 	public <T extends Vertex> void update( GL3 gl, List<T> vertices )
@@ -197,8 +232,9 @@ public class VertexBuffer extends GLNode
 	@Override
 	public void dispose( GL3 gl )
 	{
-		delete( gl );
+		bind( gl );
 		super.dispose( gl );
+		delete( gl );
 	}
 	
 	private void delete( GL3 gl )
@@ -206,7 +242,8 @@ public class VertexBuffer extends GLNode
 		System.out.println( "Deleting: " + getPath() );
 		gl.glDeleteBuffers( 1, Buffers.newDirectIntBuffer( vbo ) );
 		gl.glDeleteVertexArrays( 1, Buffers.newDirectIntBuffer( vao ) );
-		isLoaded = false;
+		initFlag = false;
+		deleteFlag = false;
 	}
 	
 	public int stride() 
@@ -214,7 +251,7 @@ public class VertexBuffer extends GLNode
 		return _stride;
 	}
 	
-	public int size()
+	public int length()
 	{
 		return _size;
 	}
@@ -227,7 +264,7 @@ public class VertexBuffer extends GLNode
 	public void print() 
 	{
 		// Number of vertices
-		int size = size();
+		int size = length();
 		
 		System.out.println( size + " vertices (" + stride() + ")" );
 		for( int i = 0; i < size; i++ )
@@ -240,6 +277,22 @@ public class VertexBuffer extends GLNode
 			
 			System.out.println( "v" + i + ": " + String.join( ", ", parts ) );
 		}
+	}
+	
+	@Override
+	public void populate( JPopupMenu menu ) 
+	{
+		menu.add( Workbench.createMenuItem( "Flip Normals", e -> flipNormals( 3 ) ) );
+		menu.add( Workbench.createMenuItem( "Transform", e -> 
+		{
+			mat4x4 mat = TransformDialog.openTransformDialog();
+			if( mat != null ) 
+			{
+				transformBy( mat, 0 );
+				parent.childEventNotify( this );
+			}
+			
+		} ) );
 	}
 }
  

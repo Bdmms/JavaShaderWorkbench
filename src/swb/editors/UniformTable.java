@@ -77,7 +77,7 @@ public class UniformTable extends EditorTable
 		@Override
 		public void removeRow() 
 		{
-			uniforms.removeLast();
+			uniforms.removeLastUniform();
 		}
 		
 		@Override
@@ -107,7 +107,7 @@ public class UniformTable extends EditorTable
 		@Override
 		public int getRowCount() 
 		{
-			return uniforms.size();
+			return uniforms.length();
 		}
 		
 		@Override 

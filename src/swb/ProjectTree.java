@@ -4,13 +4,12 @@ import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.swing.JPopupMenu;
 import javax.swing.JTree;
 import javax.swing.event.TreeModelEvent;
 import javax.swing.event.TreeModelListener;
 import javax.swing.tree.TreeModel;
 import javax.swing.tree.TreePath;
-
-import com.jogamp.opengl.GL3;
 
 import swb.editors.EditorTabs;
 import swb.editors.EditorView;
@@ -19,22 +18,22 @@ public class ProjectTree extends JTree
 {
 	private static final long serialVersionUID = 1L;
 	
-	private EditorTabs editor;
+	private JPopupMenu menu;
+	private EditorTabs editors;
 	private GLNode root;
+	
+	public boolean recompile = false;
 	
 	public ProjectTree( EditorTabs editor )
 	{
 		super();
 		
-		root = new GLNode( "#0xB7DD09" );
-		this.editor = editor;
+		menu = new JPopupMenu();
+		root = new RootNode( "#0xB7DD09" );
+		
+		this.editors = editor;
 		this.setModel( new ModelTreeModel() );
 		this.addMouseListener( new ModelTreeListener() );
-	}
-	
-	public EditorTabs getEditor()
-	{
-		return editor;
 	}
 	
 	public void add( GLNode node )
@@ -47,29 +46,9 @@ public class ProjectTree extends JTree
 	    	expandRow(i);
 	}
 	
-	public GLNode get( int index )
+	public GLNode root()
 	{
-		return root.children().get( index );
-	}
-	
-	public boolean build( GL3 gl )
-	{
-		return root.build( gl );
-	}
-	
-	public void upload( GL3 gl )
-	{
-		root.upload( gl );
-	}
-	
-	public void render( GL3 gl )
-	{
-		root.render( gl );
-	}
-	
-	public void dispose( GL3 gl )
-	{
-		root.dispose( gl );
+		return root;
 	}
 	
 	private void open( TreePath path )
@@ -80,21 +59,67 @@ public class ProjectTree extends JTree
 		{
 			EditorView view = ((GLNode)comp).createEditor();
 			
-			if( view != null ) editor.open( view );
+			if( view != null ) editors.open( view );
+		}
+	}
+	
+	private class RootNode extends GLNode
+	{
+		public RootNode( String name )
+		{
+			super( name );
+		}
+		
+		public void childEventNotify( GLNode source )
+		{
+			recompile = true;
 		}
 	}
 	
 	private class ModelTreeListener extends MouseAdapter
 	{
 		@Override
+		public void mouseReleased(MouseEvent e) 
+		{            
+			int selRow = getRowForLocation( e.getX(), e.getY() );
+			
+			if( selRow == -1 ) return;
+			
+			TreePath selPath = getPathForLocation( e.getX(), e.getY() );
+			GLNode node = (GLNode)selPath.getLastPathComponent();
+			
+			if( node == null ) return;
+			
+			switch( e.getButton() )
+			{
+			case MouseEvent.BUTTON3:
+				
+				if( e.isPopupTrigger() )
+				{
+					menu.removeAll();
+					node.populate( menu );
+					menu.show( ProjectTree.this, e.getX(), e.getY() );
+				}
+				break;
+			}
+        } 
+		
+		@Override
 		public void mousePressed(MouseEvent e) 
 		{
 			int selRow = getRowForLocation( e.getX(), e.getY() );
 			TreePath selPath = getPathForLocation( e.getX(), e.getY() );
 			
-			if( selRow != -1 && e.getClickCount() == 2 )
+			if( selRow == -1 ) return;
+			
+			switch( e.getButton() )
 			{
-				open( selPath );
+			case MouseEvent.BUTTON1:
+				if( e.getClickCount() == 2 )
+				{
+					open( selPath );
+				}
+				break;
 			}
 		}
 	}
@@ -152,7 +177,7 @@ public class ProjectTree extends JTree
 		@Override
 		public boolean isLeaf( Object node ) 
 		{
-			return (node instanceof GLNode) && !(node instanceof GLNode);
+			return (node instanceof GLNode) ? ((GLNode)node).isEmpty() : false;
 		}
 
 		@Override

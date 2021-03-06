@@ -7,27 +7,50 @@ import com.jogamp.opengl.GL3;
 import com.jogamp.opengl.util.glsl.ShaderUtil;
 
 import swb.editors.EditorView;
+import swb.editors.ShaderEditor;
 
 public class ShaderProgram extends GLNode
 {
-	private static List<ShaderProgram> SHADERS = new ArrayList<>();
-	
 	// Shader Global Uniforms
 	public static float timer = 0.0f;
+	public static float[] viewPos = { 0, 0, 0 };
 	public static float[] view = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
 	public static float[] projection = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
+	
+	private List<ShaderCode> shaders = new ArrayList<>();
 	
 	private int[] linkStatus = { 1 };
 	private int _shaderID = -1;
 	
 	private int _timerLoc;
 	private int _viewLoc;
+	private int _posLoc;
 	private int _projLoc;
 	
 	public ShaderProgram( String name )
 	{
-		super( name );
-		SHADERS.add( this );
+		super( name, ID_PROGRAM, true );
+	}
+	
+	public void addShader( File shaderFile )
+	{
+		addShader( ShaderCode.loadShader( shaderFile ) );
+	}
+	
+	public void addShader( ShaderCode shader )
+	{
+		shaders.add( shader );
+		add( new ShaderNode( shader ) );
+	}
+	
+	@Override
+	public boolean build( Renderer renderer )
+	{
+		for( ShaderCode shader : shaders )
+		{
+			compileFlag &= !shader.modifyFlag;
+		}
+		return true;
 	}
 	
 	@Override
@@ -39,49 +62,44 @@ public class ShaderProgram extends GLNode
 	@Override
 	public boolean compile( GL3 gl )
 	{
-		if( super.compile( gl ) )
+		if( compileFlag ) return true;
+		
+		System.out.println( "Compiling: " + getPath() );
+		
+		int compiled = gl.glCreateProgram();
+		for( ShaderCode shader : shaders )
 		{
-			System.out.println( "Compiling: " + getPath() );
-			int compiled = gl.glCreateProgram();
-			
-			for( GLNode node : children() )
-			{
-				if( node instanceof Shader )
-				{
-					Shader shader = (Shader)node;
-					gl.glAttachShader( compiled, shader.getID() );
-				}
-			}
-			
-			gl.glLinkProgram( compiled );
-			gl.glGetProgramiv( compiled, GL3.GL_LINK_STATUS, linkStatus, 0 );
-			
-			if( linkStatus[0] == GL3.GL_TRUE )
-			{
-				if( _shaderID != -1 ) 
-					gl.glDeleteProgram( _shaderID );
-				
-				_shaderID = compiled;
-				
-				gl.glUseProgram( _shaderID );
-				_timerLoc = gl.glGetUniformLocation( _shaderID, "time" );
-				_viewLoc = gl.glGetUniformLocation( _shaderID, "view" );
-				_projLoc = gl.glGetUniformLocation( _shaderID, "projection" );
-				return true;
-			}
-			
-			gl.glDeleteShader( compiled );
-			System.err.println( ShaderUtil.getProgramInfoLog( gl, compiled ) );
+			gl.glAttachShader( compiled, shader.getID() );
 		}
 		
+		gl.glLinkProgram( compiled );
+		gl.glGetProgramiv( compiled, GL3.GL_LINK_STATUS, linkStatus, 0 );
+		
+		if( linkStatus[0] == GL3.GL_TRUE )
+		{
+			if( _shaderID != -1 ) 
+				gl.glDeleteProgram( _shaderID );
+			
+			_shaderID = compiled;
+			
+			gl.glUseProgram( _shaderID );
+			_timerLoc = gl.glGetUniformLocation( _shaderID, "time" );
+			_viewLoc = gl.glGetUniformLocation( _shaderID, "view" );
+			_posLoc = gl.glGetUniformLocation( _shaderID, "viewPos" );
+			_projLoc = gl.glGetUniformLocation( _shaderID, "projection" );
+			return super.compile( gl );
+		}
+		
+		gl.glDeleteShader( compiled );
+		System.err.println( ShaderUtil.getProgramInfoLog( gl, compiled ) );
 		return false;
 	}
 	
 	@Override
-	public void upload( GL3 gl )
+	public void update( GL3 gl )
 	{
 		gl.glUseProgram( _shaderID );
-		super.upload( gl );
+		super.update( gl );
 	}
 	
 	@Override
@@ -91,23 +109,21 @@ public class ShaderProgram extends GLNode
 		
 		// Update Global Uniforms
 		gl.glUniform1f( _timerLoc, timer );
+		gl.glUniform3fv( _posLoc, 1, viewPos, 0 );
 		gl.glUniformMatrix4fv( _viewLoc, 1, true, view, 0);
 		gl.glUniformMatrix4fv( _projLoc, 1, true, projection, 0);
-		
-		// Avoid rendering components in Program
-		//super.render( gl );
 	}
 	
 	@Override
 	public void dispose( GL3 gl )
 	{
+		super.dispose( gl );
+		
 		if( _shaderID != -1 )
 		{
 			gl.glDeleteProgram( _shaderID );
 			_shaderID = -1;
 		}
-		
-		super.dispose( gl );
 	}
 	
 	@Override
@@ -121,31 +137,52 @@ public class ShaderProgram extends GLNode
 		return _shaderID;
 	}
 	
-	public Shader getShaderComponent( int type )
+	public ShaderCode getShaderComponent( int type )
 	{
-		for( GLNode node : children() )
+		for( ShaderCode shader : shaders )
 		{
-			if( node instanceof Shader && ((Shader)node).getType() == type )
+			if( shader.getType() == type )
 			{
-				return (Shader)node;
+				return shader;
 			}
 		}
 		
 		return null;
 	}
 	
-	public static ShaderProgram find( final int shaderID )
-	{
-		return SHADERS.stream().filter( shader -> shader._shaderID == shaderID ).findFirst().get();
-	}
-	
-	public static ShaderProgram createFrom( String name, File vsFile, File fsFile )
+	public static ShaderProgram generateProgram( String name, File vsFile, File fsFile )
 	{
 		ShaderProgram program = new ShaderProgram( name );
-		Shader vertex = new Shader( "shader.vs", ModelUtils.fileToString( vsFile ), GL3.GL_VERTEX_SHADER );
-		Shader fragment = new Shader( "shader.fs", ModelUtils.fileToString( fsFile ), GL3.GL_FRAGMENT_SHADER );
-		program.add( vertex );
-		program.add( fragment );
+		program.addShader( vsFile );
+		program.addShader( fsFile );
 		return program;
+	}
+	
+	public static ShaderProgram generateProgram( String name )
+	{
+		String prefix = "src\\swb\\svg\\" + name;
+		return generateProgram( "Shader", new File( prefix + ".vs" ), new File( prefix + ".fs" ) );
+	}
+	
+	public static class ShaderNode extends GLNode
+	{
+		private ShaderCode shader;
+		
+		public ShaderNode( ShaderCode shader ) 
+		{
+			super( shader.getName() );
+			this.shader = shader;
+		}
+		
+		@Override
+		public EditorView createEditor() 
+		{
+			return new ShaderEditor( getPath(), this );
+		}
+		
+		public ShaderCode getShader()
+		{
+			return shader;
+		}
 	}
 }

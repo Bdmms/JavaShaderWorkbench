@@ -10,7 +10,7 @@ import swb.editors.UniformTable;
 public class UniformList extends GLNode
 {
 	private List<Uniform> uniforms = new ArrayList<>();
-	private int[] _currentShader = new int[1];
+	private ShaderProgram _linkedProgram = null;
 	
 	public UniformList( String name )
 	{
@@ -24,38 +24,49 @@ public class UniformList extends GLNode
 	}
 	
 	@Override
+	public boolean build( Renderer renderer )
+	{
+		_linkedProgram = (ShaderProgram)renderer.instances[LAST_PROGRAM];
+		compileFlag &= _linkedProgram != null && _linkedProgram.compileFlag;
+		return _linkedProgram != null;
+	}
+	
+	@Override
 	public boolean compile( GL3 gl )
 	{
+		if( compileFlag ) return true;
+		
 		System.out.println( "Compiling: " + getPath() );
-		gl.glGetIntegerv( GL3.GL_CURRENT_PROGRAM, _currentShader, 0 );
+		if( _linkedProgram == null ) return false;
 		
 		for( Uniform uniform : uniforms )
 		{
-			uniform.loc = gl.glGetUniformLocation( _currentShader[0], uniform.name );
+			uniform.loc = gl.glGetUniformLocation( _linkedProgram.getID(), uniform.name );
 			System.out.println( "\t" + uniform.type.toString() + ' ' + uniform.name + " = " + uniform.getValue() );
 		}
 		
+		modifyFlag = true;
 		return super.compile( gl );
 	}
 	
 	@Override
-	public void upload( GL3 gl )
+	public void update( GL3 gl )
 	{
-		if( isModified )
+		if( !modifyFlag ) return;
+		
+		System.out.println( "Uploading: " + getPath() );
+		for( Uniform uniform : uniforms )
 		{
-			System.out.println( "Uploading: " + getPath() );
-			for( Uniform uniform : uniforms )
+			switch( uniform.type )
 			{
-				switch( uniform.type )
-				{
-				case IVEC1:
-				case SAMP2D: gl.glUniform1i( uniform.loc, ((UniformInt)uniform).value ); break;
-				default: System.err.println( "Error - Unknown data type" ); break;
-				}
+			case IVEC1:
+			case SAMP2D: gl.glUniform1i( uniform.loc, ((UniformInt)uniform).value ); break;
+			case VEC1: gl.glUniform1f( uniform.loc, ((UniformFloat)uniform).value ); break;
+			default: System.err.println( "Error - Unknown data type" ); break;
 			}
 		}
 		
-		super.upload( gl );
+		super.update( gl );
 	}
 	
 	public Uniform get( int i )
@@ -68,8 +79,8 @@ public class UniformList extends GLNode
 		Uniform uniform = uniforms.get( i );
 		if( uniform.name.equals( name ) ) return;
 		uniform.name = name;
-		isCompiled = false;
-		isModified = true;
+		compileFlag = false;
+		modifyFlag = true;
 	}
 	
 	public void setValue( int i, String value )
@@ -77,7 +88,7 @@ public class UniformList extends GLNode
 		try
 		{
 			uniforms.get( i ).setValue( value );
-			isModified = true;
+			modifyFlag = true;
 		}
 		catch( NumberFormatException e )
 		{
@@ -90,15 +101,15 @@ public class UniformList extends GLNode
 		Uniform uniform = uniforms.get( i );
 		if( uniform.type == type ) return;
 		uniforms.set( i, createUniform( uniform.name, type ) );
-		isCompiled = false;
-		isModified = true;
+		compileFlag = false;
+		modifyFlag = true;
 	}
 	
 	public void add( String name, GLDataType type )
 	{
 		uniforms.add( createUniform( name, type ) );
-		isCompiled = false;
-		isModified = true;
+		compileFlag = false;
+		modifyFlag = true;
 	}
 	
 	public void add( String name, GLDataType type, String value )
@@ -106,19 +117,20 @@ public class UniformList extends GLNode
 		Uniform uniform = createUniform( name, type );
 		uniforms.add( uniform );
 		uniform.setValue( value );
-		isCompiled = false;
-		isModified = true;
+		compileFlag = false;
+		modifyFlag = true;
 	}
 	
-	public void removeLast()
+	public Uniform removeLastUniform()
 	{
 		// TODO: Handle deleting uniform
-		uniforms.remove( uniforms.size() - 1 );
-		isCompiled = false;
-		isModified = true;
+		Uniform uniform = uniforms.remove( uniforms.size() - 1 );
+		compileFlag = false;
+		modifyFlag = true;
+		return uniform;
 	}
 	
-	public int size()
+	public int length()
 	{
 		return uniforms.size();
 	}

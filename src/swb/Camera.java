@@ -19,10 +19,6 @@ public class Camera extends MouseAdapter
 	private vec3f cameraFront = new vec3f( 0.0f, 0.0f, -1.0f );
 	private vec3f cameraUp = new vec3f( 0.0f, 1.0f, 0.0f );
 	
-	private float[] projection = ShaderProgram.projection;
-	private float[] view = ShaderProgram.view;
-	private float[] d_view = new float[16];
-	
 	private float ratio = 1.0f;
 	private float fov = MAX_FOV;
 	private float pitch = 0.0f;
@@ -48,25 +44,18 @@ public class Camera extends MouseAdapter
 	
 	private void updateView()
 	{
-		lookAt( view, position, cameraFront, cameraUp );
+		lookAt( ShaderProgram.view, position, cameraFront, cameraUp );
 		
-		// Truncate fourth row/column
-		d_view[ 0] = view[ 0];
-		d_view[ 1] = view[ 1];
-		d_view[ 2] = view[ 2];
-		d_view[ 4] = view[ 4];
-		d_view[ 5] = view[ 5];
-		d_view[ 6] = view[ 6];
-		d_view[ 8] = view[ 8];
-		d_view[ 9] = view[ 9];
-		d_view[10] = view[10];
+		ShaderProgram.viewPos[0] = position.x;
+		ShaderProgram.viewPos[1] = position.y;
+		ShaderProgram.viewPos[2] = position.z;
 		
 		viewport.repaint();
 	}
 	
 	private void updateProjection()
 	{
-		perspective( projection, fov, ratio, 0.1f, 100.0f );
+		perspective( ShaderProgram.projection, fov, ratio, 0.1f, 100.0f );
 		viewport.repaint();
 	}
 	
@@ -153,6 +142,5 @@ public class Camera extends MouseAdapter
 		projection[10] = (far + near) / (near - far);	projection[11] = -2.0f * far * near / (far - near);
 		projection[12] = 0.0f;							projection[13] = 0.0f;			
 		projection[14] = -1.0f;							projection[15] = 0.0f;
-
 	}
 }

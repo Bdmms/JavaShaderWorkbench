@@ -8,6 +8,12 @@ import swb.editors.EditorView;
 import swb.editors.ElementTable;
 import swb.math.vec3i;
 
+/**
+ * Stores indices in a buffer used to render vertices in a specified order.
+ * 
+ * Dependencies:
+ * 	- VertexBuffer
+ */
 public class ElementBuffer extends GLNode
 {
 	public final static String TAG = "elements";
@@ -22,7 +28,7 @@ public class ElementBuffer extends GLNode
 	
 	public ElementBuffer( int[] buffer )
 	{
-		super( TAG );
+		super( TAG, ID_BUFFER, true );
 		_buffer = buffer;
 	}
 	
@@ -43,14 +49,14 @@ public class ElementBuffer extends GLNode
 			_buffer[idx++] = vec.z;
 		}
 		
-		isCompiled = false;
-		isModified = true;
+		compileFlag = false;
+		modifyFlag = true;
 	}
 	
 	public void set( int triangle, int i, int value )
 	{
 		_buffer[ triangle * 3 + i ] = value;
-		isModified = true;
+		modifyFlag = true;
 	}
 	
 	public int get( int triangle, int i )
@@ -64,9 +70,8 @@ public class ElementBuffer extends GLNode
 		for( int i = 0; i < _buffer.length && i < size; i++ )
 			data[i] = _buffer[i];
 		_buffer = data;
-		
-		isCompiled = false;
-		isModified = true;
+		modifyFlag = true;
+		deleteFlag = true;
 	}
 	
 	public void add( int ... triangle )
@@ -85,36 +90,37 @@ public class ElementBuffer extends GLNode
 	}
 	
 	@Override
-	public boolean compile( GL3 gl )
-	{
-		if( isLoaded ) delete( gl );
-		return super.compile( gl );
-	}
-	
-	@Override
 	public void bind( GL3 gl )
 	{
 		gl.glBindBuffer( GL3.GL_ELEMENT_ARRAY_BUFFER, ebo[0] );
 	}
 	
 	@Override
-	public void upload( GL3 gl )
+	public boolean build( Renderer renderer )
 	{
-		if( !isLoaded )
+		return renderer.instances[LAST_ARRAY] instanceof VertexBuffer;
+	}
+	
+	@Override
+	public void update( GL3 gl )
+	{
+		if( deleteFlag ) delete( gl );
+		
+		if( !initFlag )
 		{
-			System.out.println( "Initializing: " + getPath() + " (" + size() + " tris)" );
+			System.out.println( "Initializing: " + getPath() + " (" + length() + " tris)" );
 			gl.glGenBuffers( 1, ebo, 0 );
 			gl.glBindBuffer( GL3.GL_ELEMENT_ARRAY_BUFFER, ebo[0] );
 			gl.glBufferData( GL3.GL_ELEMENT_ARRAY_BUFFER, _buffer.length * Integer.BYTES, Buffers.newDirectIntBuffer( _buffer ), GL3.GL_STATIC_DRAW );
 		}
-		else if( isModified )
+		else if( modifyFlag )
 		{
-			System.out.println( "Uploading: " + getPath() + " (" + size() + " tris)" );
+			System.out.println( "Uploading: " + getPath() + " (" + length() + " tris)" );
 			gl.glBindBuffer( GL3.GL_ELEMENT_ARRAY_BUFFER, ebo[0] );
 			gl.glBufferData( GL3.GL_ELEMENT_ARRAY_BUFFER, _buffer.length * Integer.BYTES, Buffers.newDirectIntBuffer( _buffer ), GL3.GL_STATIC_DRAW );
 		}
 		
-		super.upload( gl );
+		super.update( gl );
 	}
 	
 	@Override
@@ -127,7 +133,7 @@ public class ElementBuffer extends GLNode
 	@Override
 	public void dispose( GL3 gl )
 	{
-		if( !isLoaded ) return;
+		if( !initFlag ) return;
 		delete( gl );
 		super.dispose( gl );
 	}
@@ -136,16 +142,17 @@ public class ElementBuffer extends GLNode
 	{
 		System.out.println( "Deleting: " + getPath() );
 		gl.glDeleteBuffers( 1, Buffers.newDirectIntBuffer( ebo ) );
-		isLoaded = false;
+		deleteFlag = false;
+		initFlag = false;
 	}
 	
 	public int length()
 	{
-		return _buffer.length;
+		return _buffer.length / 3;
 	}
 	
-	public int size()
+	public boolean isRenderable()
 	{
-		return _buffer.length / 3;
+		return true;
 	}
 }

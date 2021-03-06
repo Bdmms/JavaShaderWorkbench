@@ -2,6 +2,8 @@ package swb;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
 import java.util.function.Consumer;
@@ -18,10 +20,10 @@ import javax.swing.JSplitPane;
 import com.jogamp.opengl.GLCapabilities;
 import com.jogamp.opengl.GLProfile;
 
+import swb.dynamic.DynamicPlane;
 import swb.editors.EditorTabs;
-import swb.math.Matrix;
 import swb.math.MatrixColor;
-import swb.math.vec4f;
+import swb.math.vec3f;
 
 public class Workbench extends JFrame
 {
@@ -57,8 +59,8 @@ public class Workbench extends JFrame
 		this.setPreferredSize( new Dimension( 1280, 720 ) );
 		
 		JScrollPane scrollTreeView = new JScrollPane( _modelTree );
-		JSplitPane subSplitView = new JSplitPane( JSplitPane.VERTICAL_SPLIT, scrollTreeView, _editor );
-		JSplitPane splitView = new JSplitPane( JSplitPane.HORIZONTAL_SPLIT, _view, subSplitView );
+		JSplitPane subSplitView2 = new JSplitPane( JSplitPane.VERTICAL_SPLIT, scrollTreeView, _editor );
+		JSplitPane splitView = new JSplitPane( JSplitPane.HORIZONTAL_SPLIT, _view, subSplitView2 );
 		splitView.setResizeWeight( 0.5 );
 		add( splitView );
 		pack();
@@ -67,24 +69,134 @@ public class Workbench extends JFrame
 			System.err.println( "Failed to initialize Backend!" );
 		
 		// Create default shader
+		/*
 		ShaderProgram program = ShaderProgram.createFrom( "Program 0", new File( "shaders\\template.vs" ),  new File( "shaders\\template.fs" ) );
 		UniformList uniforms = new UniformList( "uniforms" );
 		uniforms.add( "dif_texture", GLDataType.SAMP2D, "0" );
 		uniforms.add( "nrm_texture", GLDataType.SAMP2D, "1" );
 		
 		_modelTree.add( program );
-		_modelTree.add( uniforms );
+		_modelTree.add( uniforms );*/
 		
 		//_modelTree.add( new VectorDrawing( "xlm.svg") );
 		
-		//List<vec2f> circle = ModelUtils.createCircle( Math.PI / 16.0 );
-		//_modelTree.add( ModelUtils.join( circle, circle, circle ) );
-		//_modelTree.add( ModelUtils.createSphere( Math.PI / 16.0 ) );
+		addWindowListener( new WindowAdapter() 
+		{
+			@Override
+			public void windowClosing( WindowEvent e ) 
+			{
+				System.exit( 0 );
+			}
+		} );
 		
 		setVisible( true );
 	}
 	
-	public static void chooseFile( Component parent, String directory, boolean save, Consumer<File> action )
+	public JMenuBar createMenuBar()
+	{
+		JMenuBar bar = new JMenuBar();
+		JMenu file = new JMenu( "File" );
+		JMenu build = new JMenu( "Build" );
+		JMenu utility = new JMenu( "Utility" );
+		
+		file.add( createMenuItem( "Open", e -> 
+			chooseFile( this, System.getProperty( "user.dir" ), false, openFile ->
+			{
+				GLNode node = ModelUtils.read( openFile );
+				
+				// TODO: Show error
+				if( node == null ) return;
+				
+				_modelTree.add( node );
+				_view.recompile();
+			} )
+		) );
+		
+		file.add( createMenuItem( "Save As...", e -> 
+			chooseFile( this, null, true, saveFile ->
+			{
+				GLNode node = _editor.getSelectedNode();
+				
+				if( node != null )
+				{
+					String name = saveFile.getName();
+					node.saveTo( saveFile, name.substring( name.lastIndexOf( '.' ) + 1 ) );
+				}
+			} )
+		) );
+		
+		file.add( createMenuItem( "Quit", e -> System.exit( 0 ) ) );
+		
+		build.add( createMenuItem( "Rebuild", e -> _view.recompile() ) );
+		
+		utility.add( createMenuItem( "Generate Normal Map", e -> 
+			chooseFile( this, null, false, imageFile ->
+				new MatrixColor( imageFile ).normalMap()
+					.writeTo( chooseFile( this, imageFile.getParent() + "\\", true ) ) ) ) );
+		
+		utility.add( createMenuItem( "Smooth Image", e -> 
+			chooseFile( this, null, false, imageFile ->
+				new MatrixColor( imageFile ).filter( 9, part -> part.average() )
+					.writeTo( chooseFile( this, imageFile.getParent() + "\\", true ) ) ) ) );
+		
+		utility.add( createMenuItem( "Create Sphere", e -> 
+		{
+			GLNode node = ModelUtils.createSurface( 50, 50, ModelUtils.WRAP_ALL, (s,t) -> 
+			{
+				double theta = s * Math.PI * 2.0;
+				double alpha = (t - 0.5) * Math.PI;
+				double cosa = Math.cos( alpha );
+				
+				float x = (float) ( Math.cos( theta ) * cosa );
+				float y = (float) ( Math.sin( theta ) * cosa );
+				float z = (float) ( Math.sin( alpha ) );
+				
+				return new vec3f( x, y, z );
+			} );
+			
+			_modelTree.add( node );
+			_view.recompile();
+		} ) );
+		
+		utility.add( createMenuItem( "Create Dynamic Plane", e -> 
+		{
+			_modelTree.add( new DynamicPlane( "water", 250, 250 ) );
+			_view.recompile();
+		} ) );
+		
+		utility.add( createMenuItem( "Create Surface", e -> 
+		{
+			GLNode node = ModelUtils.createSurface( 75, 75, ModelUtils.WRAP_ALL, (s,t) -> 
+			{
+				double theta = s * Math.PI * 2.0;
+				double alpha = (t - 0.5) * Math.PI;
+				double cosa = Math.cos( alpha );
+				
+				double a = Math.cos( (s + t) * 25.0 * Math.PI ) * 0.25 + 1.0;
+				float x = (float) ( Math.cos( theta ) * cosa * a );
+				float y = (float) ( Math.sin( theta ) * cosa * a );
+				float z = (float) ( Math.sin( alpha ) * a );
+				
+				return new vec3f( x, y, z );
+			} );
+			
+			_modelTree.add( node );
+			_view.recompile();
+		} ) );
+		
+		utility.add( createMenuItem( "Create Skybox", e -> 
+		{
+			_modelTree.add( CubeMap.generateSkybox( "assets\\cubemap\\sky", ".png" ) );
+			_view.recompile();
+		} ) );
+		
+		bar.add( file );
+		bar.add( build );
+		bar.add( utility );
+		return bar;
+	}
+	
+	public static void chooseFile( Component parent, String directory, boolean save, FileConsumer action )
 	{
 		JFileChooser fc = new JFileChooser();
 		
@@ -94,7 +206,11 @@ public class Workbench extends JFrame
 		int resp = save ? fc.showSaveDialog( parent ) : fc.showOpenDialog( parent );
 		if( resp == JFileChooser.APPROVE_OPTION )
 		{
-			action.accept( fc.getSelectedFile() );
+			try 
+			{
+				action.accept( fc.getSelectedFile() );
+			}
+			catch( IOException e ) { System.out.println( e.getMessage() ); }
 		}
 	}
 	
@@ -107,72 +223,6 @@ public class Workbench extends JFrame
 		
 		int resp = save ? fc.showSaveDialog( parent ) : fc.showOpenDialog( parent );
 		return resp == JFileChooser.APPROVE_OPTION ? fc.getSelectedFile() : null;
-	}
-	
-	public JMenuBar createMenuBar()
-	{
-		JMenuBar bar = new JMenuBar();
-		JMenu file = new JMenu( "File" );
-		JMenu build = new JMenu( "Build" );
-		JMenu utility = new JMenu( "Utility" );
-		
-		file.add( createMenuItem( "Open", e -> 
-		{
-			chooseFile( this, System.getProperty( "user.dir" ), false, openFile ->
-			{
-				try 
-				{
-					GLNode node = ModelUtils.read( openFile );
-					
-					// TODO: Show error
-					if( node == null ) return;
-					
-					_modelTree.add( node );
-					_view.recompile();
-				} 
-				catch (Exception e1) { e1.printStackTrace(); }
-			} );
-		} ) );
-		
-		file.add( createMenuItem( "Save As...", e -> 
-		{
-			chooseFile( this, null, true, saveFile ->
-			{
-				try 
-				{
-					GLNode node = _editor.getSelectedNode();
-					
-					if( node != null )
-					{
-						String name = saveFile.getName();
-						node.saveTo( saveFile, name.substring( name.lastIndexOf( '.' ) + 1 ) );
-					}
-				} 
-				catch (IOException e1) { e1.printStackTrace(); }
-			} );
-		} ) );
-		
-		file.add( createMenuItem( "Quit", e -> System.exit( 0 ) ) );
-		
-		build.add( createMenuItem( "Rebuild", e -> _view.recompile() ) );
-		
-		utility.add( createMenuItem( "Generate Normal Map", e -> {
-			chooseFile( null, null, false, imageFile ->
-			{
-				try 
-				{
-					MatrixColor image = new MatrixColor( imageFile );
-					Matrix<vec4f> nrm = image.normalMap();
-					nrm.writeTo( chooseFile( null, null, true ) );
-				} 
-				catch (IOException e1) { e1.printStackTrace(); }
-			} );
-		} ) );
-		
-		bar.add( file );
-		bar.add( build );
-		bar.add( utility );
-		return bar;
 	}
 	
 	public static JMenuItem createMenuItem( String name, Consumer<ActionEvent> action )
@@ -190,5 +240,11 @@ public class Workbench extends JFrame
 		item.setName( name );
 		item.setText( name );
 		return item;
+	}
+	
+	@FunctionalInterface
+	private static interface FileConsumer
+	{
+		public void accept( File obj ) throws IOException;
 	}
 }

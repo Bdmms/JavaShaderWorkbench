@@ -8,7 +8,6 @@ import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
@@ -135,7 +134,7 @@ public class VectorDrawingEditor extends GLJPanel implements GLEventListener,
 		
 		if( recompileVerts ) { vertexBuffer.update( gl, drawing.getVertices() ); recompileVerts = false; }
 		if( recompileLines ) { lines.update( gl, drawing.getLines() ); recompileLines = false; }
-		if( recompileTris ) { tris.upload( gl ); recompileTris = false; }
+		if( recompileTris ) { tris.update( gl ); recompileTris = false; }
 		
 		gl.glBindVertexArray( vertexBuffer.vao[0] );
 		if( showVertices ) 	gl.glDrawArrays( GL.GL_POINTS, 0, vertexBuffer.size() );
@@ -181,7 +180,7 @@ public class VectorDrawingEditor extends GLJPanel implements GLEventListener,
 		//gl.glEnable( GL3.GL_BLEND );
 		gl.glDisable( GL3.GL_DEPTH_TEST );
 		
-		overlayShader = ShaderProgram.createFrom( "overlay", new File( "src\\svg\\overlay.vs" ), new File( "src\\svg\\overlay.fs" ) );
+		overlayShader = ShaderProgram.generateProgram( "overlay" );
 		overlayVertices = new VertexBuffer( new float[] {  0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f }, 2 );
 		overlayElements = new ElementBuffer( new int[] { 0, 1, 2, 1, 2, 3 } );
 		
@@ -189,10 +188,10 @@ public class VectorDrawingEditor extends GLJPanel implements GLEventListener,
 		overlayVertices.compile( gl );
 		overlayElements.compile( gl );
 		
-		overlayShader.upload( gl );
+		overlayShader.update( gl );
 		overlayLoc.compile( gl, overlayShader );
 		
-		shader = ShaderProgram.createFrom( "shader", new File( "src\\svg\\editorShader.vs" ), new File( "src\\svg\\editorShader.fs" ) );
+		shader = ShaderProgram.generateProgram( "editorShader" );
 		vertexBuffer = new VertexBuffer( 1000, 6 );
 		lines = new LineBuffer( 1000 );
 		tris = new ElementBuffer( new int[0] );
@@ -200,10 +199,10 @@ public class VectorDrawingEditor extends GLJPanel implements GLEventListener,
 		shader.compile( gl );
 		vertexBuffer.compile( gl );
 		shaderLoc.compile( gl, shader );
-		vertexBuffer.upload( gl );
+		vertexBuffer.update( gl );
 		
 		lines.upload( gl );
-		tris.upload( gl );
+		tris.update( gl );
 	}
 
 	@Override

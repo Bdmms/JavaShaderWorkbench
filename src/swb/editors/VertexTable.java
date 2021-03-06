@@ -10,6 +10,19 @@ import swb.VertexBuffer;
 @SuppressWarnings("serial")
 public class VertexTable extends EditorTable
 {
+	private static final TableColumn[] COLUMNS = {
+			new TableColumn( "i", int.class, false ),
+			new TableColumn( "x", float.class, true ),
+			new TableColumn( "y", float.class, true ),
+			new TableColumn( "z", float.class, true ),
+			new TableColumn( "ox", float.class, true ),
+			new TableColumn( "oy", float.class, true ),
+			new TableColumn( "oz", float.class, true ),
+			new TableColumn( "tx", float.class, true ),
+			new TableColumn( "ty", float.class, true )
+	};
+	
+	
 	private JTextField _textField = new JTextField();
 	
 	public VertexTable( String title, VertexBuffer buffer ) 
@@ -46,19 +59,14 @@ public class VertexTable extends EditorTable
 		
 		public VertexTableModel( VertexBuffer buffer )
 		{
-			super( new TableColumn[] {
-					new TableColumn( "i", int.class, false ),
-					new TableColumn( "x", float.class, true ),
-					new TableColumn( "y", float.class, true ),
-					new TableColumn( "z", float.class, true ),
-					new TableColumn( "ox", float.class, true ),
-					new TableColumn( "oy", float.class, true ),
-					new TableColumn( "oz", float.class, true ),
-					new TableColumn( "tx", float.class, true ),
-					new TableColumn( "ty", float.class, true )
-			} );
-			
+			super();
 			this.buffer = buffer;
+			
+			for( int i = 0; i < COLUMNS.length && i <= buffer.stride(); i++ )
+				addColumn( COLUMNS[i] );
+			
+			for( int i = COLUMNS.length - 1; i < buffer.stride(); i++ )
+				addColumn( new TableColumn( "e" + i, float.class, true ) );
 		}
 		
 		public void addRow( float ... row )
@@ -98,9 +106,9 @@ public class VertexTable extends EditorTable
 		}
 
 		@Override
-		public int getRowCount() 
+		public int getRowCount()
 		{
-			return buffer.size();
+			return buffer.length();
 		}
 		
 		@Override 

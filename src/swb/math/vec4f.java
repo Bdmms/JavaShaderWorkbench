@@ -41,6 +41,14 @@ public class vec4f extends vec3f
 		w += vector.w;
 	}
 	
+	public void mul( vec4f vector )
+	{
+		x *= vector.x;
+		y *= vector.y;
+		z *= vector.z;
+		w *= vector.w;
+	}
+	
 	public void mul( float scalar )
 	{
 		x *= scalar;
@@ -59,6 +67,16 @@ public class vec4f extends vec3f
 		return x * vec.x + y * vec.y + z * vec.z + w * vec.w;
 	}
 	
+	public float dot( vec3f vec, float w )
+	{
+		return x * vec.x + y * vec.y + z * vec.z + w * this.w;
+	}
+	
+	public float dot( float x, float y, float z, float w )
+	{
+		return x * this.x + y * this.y + z * this.z + w * this.w;
+	}
+	
 	public vec4f projectOn( vec4f vector )
 	{
 		return vec4f.mul( vector, dot( vector ) / vector.dot( vector ) );
@@ -71,6 +89,19 @@ public class vec4f extends vec3f
 		int ig = y > 1.0f ? 0xFF00 : (y < 0.0f ? 0 : (int)Math.round( y * 255.0f ) << 8 );
 		int ib = z > 1.0f ? 0xFF : (z < 0.0f ? 0 : (int)Math.round( z * 255.0f ) );
 		return ia | ir | ig | ib;
+	}
+	
+	@Override
+	public float get( int i )
+	{
+		switch( i )
+		{
+		case 0: return x;
+		case 1: return y;
+		case 2: return z;
+		case 3: return w;
+		default: return 0.0f;
+		}
 	}
 	
 	public float length()

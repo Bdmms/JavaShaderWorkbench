@@ -21,9 +21,9 @@ void main()
 	if( color.a < 0.5 )
 		discard;
 
-	vec3 ambience = 0.20 * color.rgb;
+	vec3 ambience = 0.5 * color.rgb;
 	vec3 lightDir = normalize(lightPos - Position);
-	vec3 diffuse = color.rgb * max(dot(lightDir, Normal), 0.0) * 0.8;
+	vec3 diffuse = color.rgb * max(dot(lightDir, Normal), 0.0) * 0.5;
 
 	FragColor = vec4( diffuse + ambience, 1.0 );
 }

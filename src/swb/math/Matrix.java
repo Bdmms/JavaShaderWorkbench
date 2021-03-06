@@ -4,18 +4,19 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Array;
+import java.util.Arrays;
 import java.util.Iterator;
-import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import javax.imageio.ImageIO;
 
 /**
- * Implements the {@link IMatrix} interface using a defined data type
+ * Implements the {@link AbstractMatrix} interface using a defined data type
  * @param <E> - The data type stored in the matrix
  */
-public class Matrix<E> implements Iterable<E>
+public class Matrix<E> implements Iterable<E>, Cloneable
 {
 	/** The instance type of the matrix, it is used to create new instances of the subclass */
 	public final MatrixInstance<E> type;
@@ -81,7 +82,7 @@ public class Matrix<E> implements Iterable<E>
 	
 	/**
 	 * Average of all elements in the matrix
-	 * @return average of matrix, or default value if this operations in not defined
+	 * @return average of matrix, or default value if this operations is not defined
 	 */
 	public E average()
 	{
@@ -210,7 +211,7 @@ public class Matrix<E> implements Iterable<E>
 		return copy;
 	}
 	
-	public Matrix<E> upscale( final int w, final int h, boolean interpolate )
+	public Matrix<E> resize( final int w, final int h, boolean interpolate )
 	{
 		Matrix<E> matrix = type.newInstance( w, h );
 		
@@ -233,7 +234,7 @@ public class Matrix<E> implements Iterable<E>
 		@SuppressWarnings("unchecked")
 		Matrix<Matrix<E>> partitions = new Matrix<Matrix<E>>( wx, hy, (Class<Matrix<E>>) getClass() );
 		
-		partitions.applyEach( loc -> partition( w * loc.x, h * loc.y, w, h ) );
+		partitions.applyEach( (x, y) -> partition( w * x, h * y, w, h ) );
 		return partitions;
 	}
 	
@@ -266,7 +267,34 @@ public class Matrix<E> implements Iterable<E>
 	
 	public void writeTo( File file ) throws IOException
 	{
-		ImageIO.write( toBufferedImage(), "png", file );
+		if( file != null )
+			ImageIO.write( toBufferedImage(), "png", file );
+	}
+	
+	public void forEach( LocateConsumer<E> consumer )
+	{
+		for( int x = 0, i = 0; x < width; x++ )
+			for( int y = 0; y < height; y++ )
+				consumer.accept( x, y, data[i++] );
+	}
+	
+	public void applyEach( LocateFunction<E> function )
+	{
+		for( int x = 0, i = 0; x < width; x++ )
+			for( int y = 0; y < height; y++ )
+				data[i++] = function.apply( x, y, data[i] );
+	}
+	
+	public void applyEach( LocateSupplier<E> function )
+	{
+		for( int x = 0, i = 0; x < width; x++ )
+			for( int y = 0; y < height; y++ )
+				data[i++] = function.next( x, y );
+	}
+	
+	public Stream<E> stream()
+	{
+		return Arrays.stream( data );
 	}
 	
 	@Override
@@ -275,30 +303,13 @@ public class Matrix<E> implements Iterable<E>
 		return new MatrixIterator();
 	}
 	
-	public void forEach( BiConsumer<Location, E> consumer )
+	@Override
+	public Matrix<E> clone()
 	{
-		Location index = new Location();
-		for( int i = 0; index.y < height; index.y++ )
-			for( index.x = 0; index.x < width; index.x++ )
-				consumer.accept( index, data[i++] );
+		return new Matrix<E>( width, height, Arrays.copyOf( data, data.length ), type );
 	}
 	
-	public void applyEach( BiFunction<Location, E, E> function )
-	{
-		Location index = new Location();
-		for( int i = 0; index.y < height; index.y++ )
-			for( index.x = 0; index.x < width; index.x++ )
-				data[i++] = function.apply( index, data[i] );
-	}
-	
-	public void applyEach( Function<Location, E> function )
-	{
-		Location index = new Location();
-		for( int i = 0; index.y < height; index.y++ )
-			for( index.x = 0; index.x < width; index.x++ )
-				data[i++] = function.apply( index );
-	}
-	
+	@Override
 	public String toString()
 	{
 		String message = new String();
@@ -307,26 +318,12 @@ public class Matrix<E> implements Iterable<E>
 			for( int x = 0; x < width; x++ )
 			{
 				E obj = data[i++];
-				message += (obj == null ? "null" : obj.toString()) + " ";
+				message += ( obj == null ? "null" : obj.toString() ) + " ";
 			}
 			
 			message += "\n";
 		}
 		return message;
-	}
-	
-	protected static interface MatrixInstance<E>
-	{
-		public Matrix<E> newInstance( int w, int h );
-	}
-	
-	/**
-	 * An object for storing a 2D coordinate
-	 */
-	public class Location
-	{
-		public int x = 0;
-		public int y = 0;
 	}
 	
 	/**
@@ -348,5 +345,28 @@ public class Matrix<E> implements Iterable<E>
 		{
 			return data[i++];
 		}
+	}
+	
+	protected static interface MatrixInstance<E>
+	{
+		public Matrix<E> newInstance( int w, int h );
+	}
+	
+	@FunctionalInterface
+	public static interface LocateSupplier<T>
+	{
+		public T next( int x, int y );
+	}
+	
+	@FunctionalInterface
+	public static interface LocateFunction<T>
+	{
+		public T apply( int x, int y, T obj );
+	}
+	
+	@FunctionalInterface
+	public static interface LocateConsumer<T>
+	{
+		public void accept( int x, int y, T obj );
 	}
 }

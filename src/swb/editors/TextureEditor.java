@@ -4,14 +4,14 @@ import javax.swing.JLabel;
 import javax.swing.JScrollPane;
 
 import swb.GLNode;
-import swb.Texture;
+import swb.ITexture;
 
 public class TextureEditor extends JLabel implements EditorView
 {
 	private static final long serialVersionUID = 1L;
 	private String name;
 	
-	public TextureEditor( String name, Texture texture )
+	public TextureEditor( String name, ITexture texture )
 	{
 		super( texture.getIcon() );
 		this.name = name;

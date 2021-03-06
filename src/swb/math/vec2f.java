@@ -1,6 +1,6 @@
 package swb.math;
 
-public class vec2f 
+public class vec2f
 {
 	public static final byte XYPLANE = 0;
 	public static final byte YZPLANE = 1;
@@ -43,10 +43,22 @@ public class vec2f
 		y += vector.y;
 	}
 	
+	public void sub( vec2f vector )
+	{
+		x -= vector.x;
+		y -= vector.y;
+	}
+	
 	public void mul( float scalar )
 	{
 		x *= scalar;
 		y *= scalar;
+	}
+	
+	public void div( float scalar )
+	{
+		x /= scalar;
+		y /= scalar;
 	}
 	
 	public float dot( vec2f vec )
@@ -77,6 +89,22 @@ public class vec2f
 	public vec2f unit()
 	{
 		return mul( this, 1.0f / length() );
+	}
+	
+	public float get( int i )
+	{
+		switch( i )
+		{
+		case 0: return x;
+		case 1: return y;
+		default: return 0.0f;
+		}
+	}
+	
+	@Override
+	public vec2f clone()
+	{
+		return new vec2f( x, y );
 	}
 	
 	@Override

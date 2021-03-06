@@ -61,11 +61,7 @@ public class PerlinNoise
 		double xsc = (maxX - minX) / w;
 		double ysc = (maxY - minY) / h;
 		
-		matrix.applyEach( (loc) -> 
-		{
-			float sample = (float)( perlin3D( minX + loc.x * xsc, minX + loc.y * ysc, z ) + 0.5 );
-			return sample;
-		} );
+		matrix.applyEach( (x, y) -> (float)( perlin3D( minX + x * xsc, minX + y * ysc, z ) + 0.5 ) );
 		
 		return matrix;
 	}

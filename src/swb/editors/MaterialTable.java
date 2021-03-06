@@ -11,6 +11,7 @@ import com.jogamp.opengl.GL3;
 
 import swb.Material;
 import swb.GLNode;
+import swb.ITexture;
 
 @SuppressWarnings("serial")
 public class MaterialTable extends EditorTable
@@ -73,7 +74,7 @@ public class MaterialTable extends EditorTable
 		
 		public void addRow( File file )
 		{
-			material.add( Material.loadTexture( file ), Material.DEFAULT_ID );
+			material.addTexture( ITexture.loadTexture( file ), Material.DEFAULT_ID );
 		}
 		
 		@Override
@@ -100,7 +101,7 @@ public class MaterialTable extends EditorTable
 		{
 			switch( col )
 			{
-			case 0: return material.get( row ).texture.filename;
+			case 0: return material.get( row ).texture.name;
 			case 1: return material.get( row );
 			case 2: return material.get( row ).texture.getIcon();
 			default: return null;

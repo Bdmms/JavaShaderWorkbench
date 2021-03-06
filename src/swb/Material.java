@@ -22,7 +22,7 @@ public class Material extends GLNode
 	public static final String DEFAULT_NRM = "default_nrm";
 	
 	/* All loaded textures */
-	private static HashMap<String, Texture> library = new HashMap<>();
+	private static HashMap<String, ITexture> library = new HashMap<>();
 	
 	// Default textures
 	{
@@ -40,10 +40,10 @@ public class Material extends GLNode
 		super(name);
 	}
 	
-	public Material( String name, Texture texture, int id ) 
+	public Material( String name, ITexture texture, int id ) 
 	{
 		super(name);
-		add( texture, id );
+		addTexture( texture, id );
 	}
 
 	@Override
@@ -52,95 +52,14 @@ public class Material extends GLNode
 		return new MaterialTable( getPath(), this );
 	}
 	
-	@Override
-	public void render( GL3 gl )
-	{
-		for( GLNode texture : children() )
-		{
-			((BindedTexture)texture).bind( gl );
-		}
-		
-		super.render( gl );
-	}
-	
-	public void add( Texture texture, int id )
+	public void addTexture( ITexture texture, int id )
 	{
 		children().add( new BindedTexture( texture, id ) );
-	}
-	
-	public void removeLast()
-	{
-		children().remove( children().size() - 1 );
 	}
 	
 	public BindedTexture get( int index )
 	{
 		return (BindedTexture)children().get( index );
-	}
-	
-	/**
-	 * Removes a loaded texture and deletes it from the GPU
-	 */
-	public static void deleteTexture( GL3 gl, String name )
-	{
-		Texture texture = library.get( name );
-		if( texture != null )
-		{
-			texture.delete( gl );
-			library.remove( name );
-		}
-	}
-	
-	/**
-	 * Deletes the existing texture with the same name and replaces it
-	 */
-	public static void replaceTexture( GL3 gl, String name, Texture texture )
-	{
-		deleteTexture( gl, name );
-		library.put( name, texture );
-	}
-	
-	/**
-	 * Returns a texture with the given name; will read file if the texture has not been loaded
-	 */
-	public static Texture loadTexture( String name )
-	{
-		Texture texture = library.get( name );
-		
-		if( texture == null )
-		{
-			texture = new Texture( new File( name ) );
-			library.put( name, texture );
-		}
-		
-		return texture;
-	}
-	
-	/**
-	 * Returns a texture with the given name; will read file if the texture has not been loaded
-	 */
-	public static Texture loadTexture( File file )
-	{
-		Texture texture = library.get( file.getName() );
-		
-		if( texture == null )
-		{
-			texture = new Texture( file );
-			library.put( file.getName(), texture );
-		}
-		
-		return texture;
-	}
-	
-	/**
-	 * Send all unloaded textures to the GPU.
-	 */
-	public static void uploadTextures( GL3 gl )
-	{
-		for( Texture texture : library.values() )
-		{
-			texture.load( gl );
-		}
 	}
 	
 	public static HashMap<String, Material> loadMtlFile( File file ) throws IOException
@@ -167,7 +86,7 @@ public class Material extends GLNode
 				break;
 				
 			case "map_Kd":
-				material.add( Material.loadTexture( new File( dir + parts[1] ) ), GL.GL_TEXTURE0 );
+				material.addTexture( ITexture.loadTexture( new File( dir + parts[1] ) ), GL.GL_TEXTURE0 );
 				break;
 			}
 		}
@@ -178,25 +97,37 @@ public class Material extends GLNode
 	
 	public static class BindedTexture extends GLNode
 	{
-		public Texture texture;
+		public ITexture texture;
 		public int id;
 		
-		public BindedTexture( Texture texture, int id )
+		public BindedTexture( ITexture texture, int id )
 		{
-			super( texture == null ? "" : texture.filename );
+			super( texture == null ? "" : texture.name, ID_TEXTURE, true );
 			this.texture = texture;
 			this.id = id;
 		}
 		
+		@Override
 		public void bind( GL3 gl )
 		{
 			if( id >= GL3.GL_TEXTURE0 && id <= GL3.GL_TEXTURE31 )
 			{
 				gl.glActiveTexture( id );
-				gl.glBindTexture( GL3.GL_TEXTURE_2D, texture.textureID[0] );
+				gl.glBindTexture( texture.type, texture.textureID[0] );
 			}
 		}
 		
+		@Override
+		public void render( GL3 gl )
+		{
+			if( id >= GL3.GL_TEXTURE0 && id <= GL3.GL_TEXTURE31 )
+			{
+				gl.glActiveTexture( id );
+				gl.glBindTexture( texture.type, texture.textureID[0] );
+			}
+		}
+		
+		@Override
 		public String toString() 
 		{
 			if( id >= GL3.GL_TEXTURE0 && id <= GL3.GL_TEXTURE31 )

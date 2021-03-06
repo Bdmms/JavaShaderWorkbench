@@ -1,25 +1,13 @@
 package swb;
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-
-import org.w3c.dom.Document;
-import org.xml.sax.SAXException;
-
-import com.jogamp.opengl.GL;
 import com.jogamp.opengl.GL3;
 
-import swb.math.vec3i;
+import swb.importer.Importer;
 import swb.math.Line;
 import swb.math.Mesh;
 import swb.math.mat3x3;
@@ -29,17 +17,12 @@ import swb.math.vec3f;
 
 public class ModelUtils 
 {
-	private static class Group
-	{
-		public String name;
-		public Material material = null;
-		public List<vec3i[]> faces = new ArrayList<>();
-		
-		public Group( String name )
-		{
-			this.name = name;
-		}
-	}
+	public final static int NO_WRAP 	 = 0x00;
+	public final static int WRAP_S  	 = 0x01;
+	public final static int WRAP_T  	 = 0x02;
+	public final static int WRAP_ST 	 = 0x03;
+	public final static int WRAP_CORNER  = 0x04;
+	public final static int WRAP_ALL  	 = 0x07;
 	
 	public static List<mat4x3> extrude( List<vec2f> map, byte mapType )
 	{
@@ -59,17 +42,25 @@ public class ModelUtils
 		return mesh;
 	}
 	
-	public static List<vec2f> createCircle( double dTheta )
+	public static GLNode createPlane( int w, int h )
 	{
-		List<vec2f> mesh = new ArrayList<vec2f>();
+		int[] iBuffer = generateSurfaceElements( w, h, NO_WRAP );
 		
-		double PI2 = Math.PI * 2.0;
-		for( double theta = 0.0; theta < PI2; theta += dTheta )
+		int size = w * h;
+		float[] vBuffer = new float[ size * 8 ];
+		for( int i = 0, vIdx = 0; i < size; i++ )
 		{
-			mesh.add( new vec2f( (float)Math.cos( theta ), (float)Math.sin( theta ) ) );
+			vBuffer[vIdx++] = (float)(i % w) / (w - 1) - 0.5f;
+			vBuffer[vIdx++] = (float)(i / w) / (h - 1) - 0.5f;
+			vBuffer[vIdx++] = 0.0f;
+			vBuffer[vIdx++] = 0.0f;
+			vBuffer[vIdx++] = 0.0f;
+			vBuffer[vIdx++] = 1.0f;
+			vBuffer[vIdx++] = 0.0f;
+			vBuffer[vIdx++] = 0.0f;
 		}
 		
-		return mesh;
+		return createFrom( "Plane", vBuffer, iBuffer );
 	}
 	
 	public static GLNode createSphere( double dAngle )
@@ -114,6 +105,131 @@ public class ModelUtils
 				3, 1, 7,	1, 7, 5,
 				3, 2, 7,	2, 7, 6
 			});
+	}
+	
+	public static GLNode createSurface( int w, int h, int wrapMsk, SurfaceFunction surface )
+	{
+		int size = w * h;
+		int[] iBuffer = generateSurfaceElements( w, h, wrapMsk );
+		
+		// Generate vertices
+		vec3f[] vertices = new vec3f[size];
+		float wf = w - 1;
+		float hf = h - 1;
+		
+		for( int i = 0; i < size; i++ )
+		{
+			float x = (float)( i % w ) / wf;
+			float y = (float)( i / w ) / hf;
+			vertices[i] = surface.surfaceAt( x, y );
+		}
+		
+		// Prepare normals
+		vec3f[] normals = new vec3f[size];
+		int[] nCounts = new int[size];
+		for( int i = 0; i <  normals.length; i++ )
+			normals[i] = new vec3f();
+		
+		// Sum the normals per face
+		for( int e = 0; e < iBuffer.length; )
+		{
+			int i0 = iBuffer[e++];
+			int i1 = iBuffer[e++];
+			int i2 = iBuffer[e++];
+			vec3f vs = vec3f.sub( vertices[i1], vertices[i0] );
+			vec3f vt = vec3f.sub( vertices[i2], vertices[i0] );
+			vec3f vn = vs.cross( vt );
+			vn.normalize();
+			normals[i0].add( vn );
+			normals[i1].add( vn );
+			normals[i2].add( vn );
+			nCounts[i0]++;
+			nCounts[i1]++;
+			nCounts[i2]++;
+		}
+		
+		// Scale the normal average
+		for( int i = 0; i < normals.length; i++ )
+			normals[i].div( nCounts[i] );
+		
+		// Convert vertices to buffer
+		float[] vBuffer = new float[ w * h * 8 ];
+		for( int i = 0, vIdx = 0; i < vertices.length; i++ )
+		{
+			vec3f v = vertices[i];
+			vec3f vn = normals[i];
+			vBuffer[vIdx++] = v.x;
+			vBuffer[vIdx++] = v.y;
+			vBuffer[vIdx++] = v.z;
+			vBuffer[vIdx++] = vn.x;
+			vBuffer[vIdx++] = vn.y;
+			vBuffer[vIdx++] = vn.z;
+			vBuffer[vIdx++] = 0.0f;
+			vBuffer[vIdx++] = 0.0f;
+		}
+		
+		return createFrom( "Cube", vBuffer, iBuffer );
+	}
+	
+	private static int generateQuadElements( int[] buffer, int idx, int i0, int i1, int i2, int i3 )
+	{
+		buffer[idx++] = i2;
+		buffer[idx++] = i0;
+		buffer[idx++] = i1;
+		buffer[idx++] = i1;
+		buffer[idx++] = i3;
+		buffer[idx++] = i2;
+		return idx;
+	}
+	
+	public static int[] generateSurfaceElements( int w, int h, int wrapMsk )
+	{
+		int size = 6 * (w - 1) * (h - 1);
+		if( (wrapMsk & WRAP_T) != 0 ) size += 6 * (h - 1);
+		if( (wrapMsk & WRAP_S) != 0 ) size += 6 * (w - 1);
+		if( (wrapMsk & WRAP_CORNER) != 0 ) size += 6;
+		
+		int[] iBuffer = new int[size];
+		int idx = 0;
+		
+		for( int y = 1; y < h; y++ )
+		{
+			for( int x = 1; x < w; x++ )
+			{
+				// Generate the Quads
+				int i0 = (x - 1) + (y - 1) * w;
+				int i1 = i0 + 1;
+				idx = generateQuadElements( iBuffer, idx, i0, i1, i0 + w, i1 + w );
+			}
+			
+			if( (wrapMsk & WRAP_T) != 0 )
+			{
+				// Generate the Quads that wrap around the y-axis
+				int i0 = w - 1 + (y - 1) * w;
+				int i1 = (y - 1) * w;
+				idx = generateQuadElements( iBuffer, idx, i0, i1, i0 + w, i1 + w );
+			}
+		}
+		
+		if( (wrapMsk & WRAP_S) != 0 )
+		{
+			// Generate the Quads that wrap around the x-axis
+			for( int x = 1; x < w; x++ )
+			{
+				int i0 = (x - 1) + (h - 1) * w;
+				int i2 = (x - 1);
+				idx = generateQuadElements( iBuffer, idx, i0, i0 + 1, i2, i2 + 1 );
+			}
+		}
+		
+		if( (wrapMsk & WRAP_CORNER) != 0 )
+		{
+			// Generate last Quad
+			int i1 = w - 1;
+			int i2 = w * (h - 1);
+			idx = generateQuadElements( iBuffer, idx, 0, i1, i2, i1 + i2 );
+		}
+		return iBuffer;
 	}
 	
 	public static GLNode createFromOrthographicView( List<vec2f> xmap, List<vec2f> zmap )
@@ -245,14 +361,17 @@ public class ModelUtils
 		GLNode model = new GLNode( name );
 		
 		Material material = new Material( "default" );
-		material.add( Material.loadTexture( Material.DEFAULT_DIF ), GL3.GL_TEXTURE0 );
+		material.addTexture( ITexture.loadTexture( Material.DEFAULT_DIF ), GL3.GL_TEXTURE0 );
 		
-		GLNode mesh = new GLNode( "mesh" );
-		mesh.add( new ElementBuffer( eBuffer ) );
-		mesh.add( material );
+		UniformList uniforms = new UniformList( "uniforms" );
+		uniforms.add( "dif_texture", GLDataType.SAMP2D, "0" );
+		uniforms.add( "nrm_texture", GLDataType.SAMP2D, "1" );
 		
+		model.add( ShaderProgram.generateProgram( "template" ) );
+		model.add( uniforms );
 		model.add( new VertexBuffer( vBuffer, 8 ) );
-		model.add( mesh );
+		model.add( material );
+		model.add( new ElementBuffer( eBuffer ) );
 		
 		return model;
 	}
@@ -269,159 +388,23 @@ public class ModelUtils
 		} 
 		catch (IOException e) 
 		{
+			System.err.println( "Error - Cannot read " + file.getPath() );
 			return "";
 		}
 	}
 	
-	public static GLNode read( File file ) throws IOException, ParserConfigurationException, SAXException
+	public static GLNode read( File file ) throws IOException
 	{
 		String filename = file.getName();
 		String ext = filename.substring( filename.lastIndexOf( '.' ) + 1 ).toUpperCase();
 		
-		switch( ext )
-		{
-		case "OBJ": return readOBJ( file );
-		case "DAE": return readDAE( file );
-		default: return null;
-		}
+		Importer importer = Importer.getImporter( ext );
+		return importer == null ? null : importer.read( file );
 	}
 	
-	public static GLNode readFBX( File file ) throws IOException
+	@FunctionalInterface
+	public static interface SurfaceFunction
 	{
-		return null;
-	}
-	
-	public static GLNode readDAE( File file ) throws IOException, ParserConfigurationException, SAXException
-	{
-        DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-        DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-        Document doc = dBuilder.parse( file );
-        doc.getDocumentElement().normalize();
-        
-        
-        
-		return null;
-	}
-	
-	public static GLNode readOBJ( File file ) throws IOException
-	{
-		BufferedReader reader = new BufferedReader( new FileReader( file ) );
-		
-		String dir = file.getAbsolutePath().substring( 0, file.getAbsolutePath().lastIndexOf( '\\' ) ) + "\\";
-		GLNode model = new GLNode( file.getName() );
-		
-		List<vec3f> position = new ArrayList<>();
-		List<vec3f> normals = new ArrayList<>();
-		List<vec3f> textCoord = new ArrayList<>();
-		List<Group> groups = new ArrayList<>();
-		List<GLNode> meshes = new ArrayList<>();
-		Group current = null;
-		
-		HashMap<String, Material> materialList = null;
-		
-		Iterator<String> iterator = reader.lines().iterator();
-		while( iterator.hasNext() )
-		{
-			String line = iterator.next();
-			String[] parts = line.split( "\\s*( |\t)\\s*" );
-			
-			switch( parts[0] )
-			{
-			case "g":
-				if( parts.length > 1 )
-				{
-					current = new Group( line.substring( line.indexOf( ' ' ) + 1 ) );
-					System.out.println(current.name);
-					groups.add( current );
-				}
-				break;
-			
-			case "v":  		
-			{
-				vec3f pos = new vec3f( parts );
-				pos.mul( 0.1f );
-				position.add( pos ); 
-				break;
-			}
-			case "vn": 		normals.add( new vec3f( parts ) ); break;
-			case "vt": 		textCoord.add( new vec3f( parts ) ); break;
-			
-			case "f":  		
-				vec3i[] face = new vec3i[3];
-				face[0] = new vec3i( parts[1] );
-				face[1] = new vec3i( parts[2] );
-				face[2] = new vec3i( parts[3] );
-				current.faces.add( face ); break;
-				
-			case "mtllib": 	
-				materialList = Material.loadMtlFile( new File( dir + parts[1] ) ); 
-				break;
-				
-			case "usemtl":
-				if( materialList == null )
-				{
-					String filename = line.substring( line.lastIndexOf( '\\' ) + 1 );
-					String name = filename.substring( 0, filename.lastIndexOf( '.' ) );
-					Texture texture = Material.loadTexture( dir + filename );
-					current.material = new Material( name, texture, GL.GL_TEXTURE0 );
-					current.material.add( Material.loadTexture( Material.DEFAULT_NRM ), GL.GL_TEXTURE1 );
-				}
-				else
-				{
-					current.material = materialList.get( parts[1] );
-				}
-				break;
-				
-			default: break;
-			}
-		}
-		
-		// Compile the OBJ file into the buffers
-		int vSize = groups.stream().mapToInt( g -> g.faces.size() * 3 ).sum();
-		float[] buffer = new float[ vSize * 8 ];
-		int vIdx = 0;
-		int gIdx = 0;
-		
-		for( Group group : groups )
-		{
-			if( group.faces.size() == 0 ) continue;
-			
-			int[] indices = new int[ group.faces.size() * 3 ];
-			int eIdx = 0;
-			
-			for( vec3i[] face : group.faces )
-			{
-				for( vec3i vec : face )
-				{
-					vec3f pos = position.get( vec.x );
-					vec3f txt = textCoord.get( vec.y );
-					vec3f nrm = normals.get( vec.z );
-					
-					buffer[vIdx++] = pos.x;
-					buffer[vIdx++] = pos.y;
-					buffer[vIdx++] = pos.z;
-					buffer[vIdx++] = nrm.x;
-					buffer[vIdx++] = nrm.y;
-					buffer[vIdx++] = nrm.z;
-					buffer[vIdx++] = txt.x;
-					buffer[vIdx++] = txt.y;
-					indices[eIdx++] = gIdx++;
-				}
-			}
-			
-			GLNode mesh = new GLNode( group.name );
-			mesh.add( group.material );
-			mesh.add( new ElementBuffer( indices ) );
-			meshes.add( mesh );
-		}
-		
-		model.add( new VertexBuffer( buffer, 8 ) );
-		
-		for( GLNode group : meshes )
-			model.add( group );
-		
-		reader.close();
-		
-		return model;
+		public vec3f surfaceAt( float s, float t );
 	}
 }

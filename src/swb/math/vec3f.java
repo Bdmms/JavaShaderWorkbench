@@ -82,6 +82,11 @@ public class vec3f extends vec2f
 		return x * vec.x + y * vec.y + z * vec.z;
 	}
 	
+	public float dot( float x, float y, float z )
+	{
+		return x * this.x + y * this.y + z * this.z;
+	}
+	
 	public vec3f cross( vec3f vec )
 	{
 		return new vec3f( 
@@ -104,6 +109,18 @@ public class vec3f extends vec2f
 	public vec3f projectOn( vec3f vector )
 	{
 		return vec3f.mul( vector, dot( vector ) / vector.dot( vector ) );
+	}
+	
+	@Override
+	public float get( int i )
+	{
+		switch( i )
+		{
+		case 0: return x;
+		case 1: return y;
+		case 2: return z;
+		default: return 0.0f;
+		}
 	}
 	
 	@Override

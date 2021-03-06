@@ -64,7 +64,7 @@ public class ElementTable extends EditorTable
 		@Override
 		public void removeRow() 
 		{
-			buffer.resize( buffer.length() - 3 );
+			buffer.resize( buffer.length() * 3 - 3 );
 			updateTable( new TableModelEvent( this ) );
 		}
 		
@@ -105,7 +105,7 @@ public class ElementTable extends EditorTable
 		@Override
 		public int getRowCount() 
 		{
-			return buffer.size();
+			return buffer.length();
 		}
 		
 		@Override 

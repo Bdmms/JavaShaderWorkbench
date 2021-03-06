@@ -89,7 +89,7 @@ public abstract class EditorTable extends JTable implements EditorView
 		return _model;
 	}
 	
-	public static class TableColumn
+	protected static class TableColumn
 	{
 		public final String name;
 		public final Class<?> type;
@@ -108,9 +108,14 @@ public abstract class EditorTable extends JTable implements EditorView
 		private List<TableModelListener> _listeners = new ArrayList<>();
 		protected List<TableColumn> _columns = new ArrayList<>();
 		
+		public ObserverTableModel()
+		{
+			_columns = new ArrayList<>();
+		}
+		
 		public ObserverTableModel( TableColumn[] columns )
 		{
-			_columns.addAll( Arrays.asList( columns ) );
+			_columns = Arrays.asList( columns );
 		}
 		
 		public void setColumns( TableColumn[] columns )

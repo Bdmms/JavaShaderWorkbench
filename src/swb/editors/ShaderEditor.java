@@ -8,24 +8,27 @@ import javax.swing.event.CaretEvent;
 import javax.swing.event.CaretListener;
 
 import swb.GLNode;
-import swb.Shader;
+import swb.ShaderCode;
+import swb.ShaderProgram.ShaderNode;
 
 public class ShaderEditor extends JTextArea implements EditorView, CaretListener
 {
 	private static final long serialVersionUID = 1L;
 	public static final Font FONT = new Font("monospaced", Font.PLAIN, 16);
 	
-	private Shader shader;
+	private ShaderNode shader;
+	private ShaderCode code;
 	
-	public ShaderEditor( String title, Shader shader )
+	public ShaderEditor( String title, ShaderNode shader )
 	{
 		this.shader = shader;
+		code = shader.getShader();
 		
 		setEditable( true );
 		setLineWrap( true );
 		setWrapStyleWord( true );
 		setFont( FONT );
-		setText( shader.getCode() );
+		setText( code.getCode() );
 		setName( title );
 		
 		addCaretListener( this );
@@ -35,12 +38,13 @@ public class ShaderEditor extends JTextArea implements EditorView, CaretListener
 	public JComponent createView() 
 	{
 		return new JScrollPane( this );
+		//return new DynamicPanel( getName(), new JScrollPane( this ) );
 	}
 
 	@Override
 	public void caretUpdate(CaretEvent e) 
 	{
-		shader.setCode( getText() );
+		code.setCode( getText() );
 	}
 	
 	@Override 
