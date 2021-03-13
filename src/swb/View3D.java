@@ -67,8 +67,8 @@ public class View3D extends GLJPanel implements GLEventListener
 		}
 		
 		// Increment timer
-		ShaderProgram.timer += 0.01f;
-		ShaderProgram.timer -= Math.floor( ShaderProgram.timer );
+		_camera.timer += 0.01f;
+		_camera.timer -= (float)Math.floor( _camera.timer );
 	}
 
 	@Override

@@ -23,7 +23,7 @@ public class TestCircle
 		{
 			vec3f p = vec3f.random( -100.0f, 100.0f );
 			vec3f n = vec3f.random( -100.0f, 100.0f );
-			vec3f u = new vec3f( n.y, n.x, n.z ).cross( n );
+			vec3f u = new vec3f( n.getY(), n.getX(), n.getZ() ).cross( n );
 			vec3f v = n.cross( u );
 			u.normalize();
 			v.normalize();

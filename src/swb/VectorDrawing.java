@@ -5,6 +5,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.jogamp.opengl.math.FloatUtil;
+
 import swb.editors.EditorView;
 import swb.editors.VectorDrawingEditor;
 import swb.math.vec2f;
@@ -14,17 +16,18 @@ import swb.math.vec4f;
 
 public class VectorDrawing extends GLNode
 {
-	private List<TextureVertex> vertices = new ArrayList<>();
+	private DynamicVertexBuffer<TextureVertex> vertices;
 	private List<vec2i> lines = new ArrayList<>();
 	
 	public VectorDrawing(String name) 
 	{
-		super(name);
+		super( name );
+		vertices = new DynamicVertexBuffer<>( 1000, 6 );
 	}
 	
 	public int addVertex( float x, float y )
 	{
-		vertices.add( new TextureVertex( new vec2f( x, -y ), new vec4f( 1.0f, 1.0f, 1.0f, 1.0f ) ) );
+		vertices.addVertex( new TextureVertex( vertices.getData(), vertices.getOffset(), x, -y ) );
 		return vertices.size() - 1;
 	}
 	
@@ -42,11 +45,9 @@ public class VectorDrawing extends GLNode
 		
 		for( int i = 0; i < size; i++ )
 		{
-			TextureVertex vertex = vertices.get( i );
-			float dx = x - vertex.position.x;
-			float dy = y - vertex.position.y;
+			TextureVertex vertex = vertices.getVertex( i );
 			
-			if( dx * dx + dy * dy <= radius )
+			if( vertex.position.dot( x, y ) <= radius )
 				return i;
 		}
 		
@@ -55,33 +56,30 @@ public class VectorDrawing extends GLNode
 	
 	public void setPosition( int vIdx, float x, float y )
 	{
-		TextureVertex vertex = vertices.get( vIdx );
-		vertex.position.x = x;
-		vertex.position.y = -y;
+		TextureVertex vertex = vertices.getVertex( vIdx );
+		vertex.position.set( x, -y );
 		vertex.modified = true;
 	}
 	
 	public void setColor( int vIdx, float x, float y )
 	{
-		TextureVertex vertex = vertices.get( vIdx );
-		float dx = x - vertex.position.x;
-		float dy = y - vertex.position.y;
+		TextureVertex vertex = vertices.getVertex( vIdx );
+		float dx = x - vertex.position.getX();
+		float dy = y - vertex.position.getY();
 		
-		float angle = (float)Math.atan2(dy, dx);
+		float angle = FloatUtil.atan2(dy, dx);
 		int col = (int)(angle * 0xFFFFFF);
 		float r = ((col >> 16) & 0xFF) / 255.0f;
 		float g = ((col >> 8) & 0xFF) / 255.0f;
 		float b = (col & 0xFF) / 255.0f;
 		
-		vertex.color.x = r;
-		vertex.color.y = g;
-		vertex.color.z = b;
+		vertex.color.set( r, g, b );
 		vertex.modified = true;
 	}
 	
 	public void setSelected( int vIdx, boolean state )
 	{
-		TextureVertex vertex = vertices.get( vIdx );
+		TextureVertex vertex = vertices.getVertex( vIdx );
 		if( state != vertex.selected ) 
 		{
 			vertex.modified = true;
@@ -89,7 +87,7 @@ public class VectorDrawing extends GLNode
 		}
 	}
 	
-	public List<TextureVertex> getVertices()
+	public DynamicVertexBuffer<TextureVertex> getVertexBuffer()
 	{
 		return vertices;
 	}
@@ -107,23 +105,23 @@ public class VectorDrawing extends GLNode
 		for( int i = 0; i < lines.size() - 2; i++ )
 		{
 			vec2i l0 = lines.get( i );
-			unique[0] = l0.x;
-			unique[1] = l0.y;
+			unique[0] = l0.getX();
+			unique[1] = l0.getY();
 			
 			for( int j = i + 1; j < lines.size() - 1; j++ )
 			{
 				int c2x = 2;
 				vec2i l1 = lines.get( j );
-				if( !isContained( unique, l1.x, c2x ) ) unique[c2x++] = l1.x;
-				if( !isContained( unique, l1.y, c2x ) ) unique[c2x++] = l1.y;
+				if( !isContained( unique, l1.getX(), c2x ) ) unique[c2x++] = l1.getX();
+				if( !isContained( unique, l1.getY(), c2x ) ) unique[c2x++] = l1.getY();
 				if( c2x > 3 ) continue;
 				
 				for( int k = j + 1; k < lines.size(); k++ )
 				{
 					int c3x = c2x;
 					vec2i l2 = lines.get( k );
-					if( !isContained( unique, l2.x, c2x ) ) c3x++;
-					if( !isContained( unique, l2.y, c2x ) ) c3x++;
+					if( !isContained( unique, l2.getX(), c2x ) ) c3x++;
+					if( !isContained( unique, l2.getY(), c2x ) ) c3x++;
 					
 					if( c3x == 3 )
 						faces.add( new vec3i( unique[0], unique[1], unique[2] ) );
@@ -145,13 +143,19 @@ public class VectorDrawing extends GLNode
 	{
 		FileWriter writer = new FileWriter( file );
 		
-		writer.write( vertices.size() + "\n" );
-		for( Vertex vertex : vertices )
-			writer.write( vertex.toString() + '\n' );
+		writer.write( vertices.size() );
+		writer.write( '\n' );
+		writer.write( vertices.toString() );
+		writer.write( '\n' );
 		
-		writer.write( lines.size() + "\n" );
+		writer.write( lines.size() );
+		writer.write( '\n' );
+		
 		for( vec2i line : lines )
-			writer.write( line.toString() + '\n' );
+		{
+			writer.write( line.toString() );
+			writer.write( '\n' );
+		}
 		
 		writer.close();
 	}
@@ -164,48 +168,37 @@ public class VectorDrawing extends GLNode
 		return false;
 	}
 	
-	private static class TextureVertex implements Vertex
+	private static class TextureVertex extends Vertex
 	{
 		public vec2f position;
 		public vec4f color;
 		public boolean selected = false;
 		public boolean modified = true;
 		
-		public TextureVertex( vec2f pos, vec4f col )
+		public TextureVertex( float[] buffer, int offset, float x, float y  )
 		{
-			position = pos;
-			color = col;
+			super( buffer, offset, 6 );
+			position = new vec2f( data, offset );
+			color = new vec4f( data, offset + 2 );
+			data[offset++] = x;
+			data[offset++] = y;
+			data[offset++] = 1.0f;
+			data[offset++] = 1.0f;
+			data[offset++] = 1.0f;
+			data[offset++] = 1.0f;
 		}
 
 		@Override
-		public void writeDataBuffer( float[] buffer, int idx )
+		public void copyTo( float[] buffer, int idx )
 		{
-			buffer[idx++] = position.x;
-			buffer[idx++] = position.y;
-			buffer[idx++] = color.x;
-			buffer[idx++] = color.y;
-			buffer[idx++] = color.z;
-			buffer[idx++] = color.w;
+			super.copyTo( buffer, idx );
 			modified = false;
 		}
-		
-		@Override
-		public float[] getData()
-		{
-			return new float[] { position.x, position.y, color.x, color.y, color.z, color.w };
-		}
-
 
 		@Override
 		public boolean isModified() 
 		{
 			return modified;
-		}
-
-		@Override
-		public String toString() 
-		{
-			return String.join( ", ", Vertex.toStringArr( this ) );
 		}
 	}
 }

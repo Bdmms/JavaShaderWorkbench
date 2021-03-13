@@ -36,21 +36,23 @@ public class VectorDrawingEditor extends GLJPanel implements GLEventListener,
 {
 	private static final long serialVersionUID = 1L;
 	
+	private static final float[] VIEW_VERTS = { 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f };
+	private static final int[] VIEW_ELEMENTS = { 0, 1, 2, 1, 2, 3 };
+	
 	private VectorDrawing drawing;
 	
 	// Overlay
 	private Texture textureQueue = null;
 	private Texture overlay;
-	private ShaderProgram overlayShader;
-	private VertexBuffer overlayVertices;
-	private ElementBuffer overlayElements;
+	private ShaderProgram overlayShader = ShaderProgram.generateProgram( "overlay" );
+	private VertexBuffer overlayVertices = new VertexBuffer( VIEW_VERTS, 2 );
+	private ElementBuffer overlayElements = new ElementBuffer( VIEW_ELEMENTS );
 	private UniformLocation overlayLoc = new UniformLocation();
 	
 	// Shader
-	private ShaderProgram shader;
-	private VertexBuffer vertexBuffer;
-	private LineBuffer lines;
-	private ElementBuffer tris;
+	private ShaderProgram shader = ShaderProgram.generateProgram( "editorShader" );
+	private LineBuffer lines = new LineBuffer( 1000 );
+	private ElementBuffer tris = new ElementBuffer( new int[0] );
 	private UniformLocation shaderLoc = new UniformLocation();
 	
 	// Window Parameters
@@ -132,12 +134,12 @@ public class VectorDrawingEditor extends GLJPanel implements GLEventListener,
 		gl.glUseProgram( shader.getID() );
 		shaderLoc.upload( gl );
 		
-		if( recompileVerts ) { vertexBuffer.update( gl, drawing.getVertices() ); recompileVerts = false; }
+		if( recompileVerts ) { drawing.getVertexBuffer().updateDynamic( gl ); recompileVerts = false; }
 		if( recompileLines ) { lines.update( gl, drawing.getLines() ); recompileLines = false; }
 		if( recompileTris ) { tris.update( gl ); recompileTris = false; }
 		
-		gl.glBindVertexArray( vertexBuffer.vao[0] );
-		if( showVertices ) 	gl.glDrawArrays( GL.GL_POINTS, 0, vertexBuffer.size() );
+		gl.glBindVertexArray( drawing.getVertexBuffer().vao[0] );
+		if( showVertices ) 	gl.glDrawArrays( GL.GL_POINTS, 0, drawing.getVertexBuffer().length() );
 		if( showLines )		lines.render( gl );
 		if( showTris )		tris.render( gl );
 		gl.glBindVertexArray( 0 );
@@ -157,7 +159,7 @@ public class VectorDrawingEditor extends GLJPanel implements GLEventListener,
 		overlayElements.dispose( gl );
 		
 		shader.dispose( gl );
-		vertexBuffer.dispose( gl );
+		drawing.getVertexBuffer().dispose( gl );
 		lines.dispose( gl );
 		tris.dispose( gl );
 		
@@ -180,10 +182,6 @@ public class VectorDrawingEditor extends GLJPanel implements GLEventListener,
 		//gl.glEnable( GL3.GL_BLEND );
 		gl.glDisable( GL3.GL_DEPTH_TEST );
 		
-		overlayShader = ShaderProgram.generateProgram( "overlay" );
-		overlayVertices = new VertexBuffer( new float[] {  0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f }, 2 );
-		overlayElements = new ElementBuffer( new int[] { 0, 1, 2, 1, 2, 3 } );
-		
 		overlayShader.compile( gl );
 		overlayVertices.compile( gl );
 		overlayElements.compile( gl );
@@ -191,15 +189,11 @@ public class VectorDrawingEditor extends GLJPanel implements GLEventListener,
 		overlayShader.update( gl );
 		overlayLoc.compile( gl, overlayShader );
 		
-		shader = ShaderProgram.generateProgram( "editorShader" );
-		vertexBuffer = new VertexBuffer( 1000, 6 );
-		lines = new LineBuffer( 1000 );
-		tris = new ElementBuffer( new int[0] );
-		
 		shader.compile( gl );
-		vertexBuffer.compile( gl );
 		shaderLoc.compile( gl, shader );
-		vertexBuffer.update( gl );
+		
+		drawing.getVertexBuffer().compile( gl );
+		drawing.getVertexBuffer().update( gl );
 		
 		lines.upload( gl );
 		tris.update( gl );
@@ -447,8 +441,8 @@ public class VectorDrawingEditor extends GLJPanel implements GLEventListener,
 				int idx = 0;
 				for( vec2i line : lines )
 				{
-					buffer[idx++] = line.x;
-					buffer[idx++] = line.y;
+					line.copyTo( buffer, idx );
+					idx += 2;
 				}
 				
 				size = lines.size();
@@ -460,10 +454,9 @@ public class VectorDrawingEditor extends GLJPanel implements GLEventListener,
 				int difference = (lines.size() - size) * 2;
 				int index = size * 2;
 				int idx = index;
-				for( int i = size; i < lines.size(); i++ )
+				for( int i = size; i < lines.size(); i++, idx += 2 )
 				{
-					buffer[idx++] = lines.get( i ).x;
-					buffer[idx++] = lines.get( i ).y;
+					lines.get( i ).copyTo( buffer, idx );
 				}
 				
 				size = lines.size();

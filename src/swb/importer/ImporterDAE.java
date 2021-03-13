@@ -24,7 +24,6 @@ import swb.ShaderProgram;
 import swb.UniformList;
 import swb.VertexBuffer;
 import swb.math.mat4x4;
-import swb.math.vec4f;
 import swb.ElementBuffer;
 import swb.GLDataType;
 
@@ -115,7 +114,9 @@ public class ImporterDAE extends Importer
 		ElementBuffer elements = parseElementArray( elementArray );
 		Material material = parseMaterial( directory, materialNode );
 		
-		vertices.transformBy( new mat4x4( new vec4f( 0.0f ), new vec4f( 0.01f ) ), 0 );
+		mat4x4 matrix = new mat4x4();
+		matrix.setTransform3D( 0.0f, 0.0f, 0.0f, 0.01f, 0.01f, 0.01f );
+		vertices.transformBy( matrix, 0 );
 		
 		group.add( vertices );
 		group.add( material );
@@ -237,17 +238,5 @@ public class ImporterDAE extends Importer
         }
 		
 		return components;
-	}
-	
-	public static void main( String[] args )
-	{
-		try 
-		{
-			new ImporterDAE().read( new File( "C:\\Users\\mmsra\\eclipse-workspace\\Shader_WorkBench\\assets\\Acerola\\tr0024_00.dae" ) );
-		} 
-		catch (IOException e) 
-		{
-			e.printStackTrace();
-		}
 	}
 }

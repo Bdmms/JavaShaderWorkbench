@@ -76,19 +76,19 @@ public class ImporterOBJ extends Importer
 			
 			case "v":  		
 			{
-				vec3f pos = new vec3f( parts );
+				vec3f pos = new vec3f( parts, 1 );
 				pos.mul( 0.1f );
 				position.add( pos ); 
 				break;
 			}
-			case "vn": 		normals.add( new vec3f( parts ) ); break;
-			case "vt": 		textCoord.add( new vec3f( parts ) ); break;
+			case "vn": 		normals.add( new vec3f( parts, 1 ) ); break;
+			case "vt": 		textCoord.add( new vec3f( parts, 1 ) ); break;
 			
 			case "f":  		
 				vec3i[] face = new vec3i[3];
-				face[0] = new vec3i( parts[1] );
-				face[1] = new vec3i( parts[2] );
-				face[2] = new vec3i( parts[3] );
+				face[0] = new vec3i( parts[1].split( "/" ), 0 );
+				face[1] = new vec3i( parts[2].split( "/" ), 0 );
+				face[2] = new vec3i( parts[3].split( "/" ), 0 );
 				current.faces.add( face ); break;
 				
 			case "mtllib": 	
@@ -131,19 +131,14 @@ public class ImporterOBJ extends Importer
 			{
 				for( vec3i vec : face )
 				{
-					vec3f pos = position.get( vec.x );
-					vec3f txt = textCoord.get( vec.y );
-					vec3f nrm = normals.get( vec.z );
-					
-					buffer[vIdx++] = pos.x;
-					buffer[vIdx++] = pos.y;
-					buffer[vIdx++] = pos.z;
-					buffer[vIdx++] = nrm.x;
-					buffer[vIdx++] = nrm.y;
-					buffer[vIdx++] = nrm.z;
-					buffer[vIdx++] = txt.x;
-					buffer[vIdx++] = txt.y;
+					vec3f pos = position.get( vec.getX() );
+					vec3f txt = textCoord.get( vec.getY() );
+					vec3f nrm = normals.get( vec.getZ() );
+					pos.copyTo( buffer, vIdx    , 3 );
+					nrm.copyTo( buffer, vIdx + 3, 3 );
+					txt.copyTo( buffer, vIdx + 6, 2 );
 					indices[eIdx++] = gIdx++;
+					vIdx += 8;
 				}
 			}
 			

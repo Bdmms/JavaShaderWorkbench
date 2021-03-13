@@ -43,6 +43,14 @@ public class VertexBuffer extends GLNode
 		_size = buffer.length / stride;
 	}
 	
+	public VertexBuffer( String name, float[] buffer, int stride )
+	{
+		super( name, ID_ARRAY | ID_BUFFER, true );
+		_buffer = buffer;
+		_stride = stride;
+		_size = buffer.length / stride;
+	}
+	
 	@Override
 	public EditorView createEditor()
 	{
@@ -112,7 +120,7 @@ public class VertexBuffer extends GLNode
 	{
 		for( int i = 0; i < _buffer.length; i += _stride )
 		{
-			transform.transform( _buffer, i + atr );
+			transform.transform3f( _buffer, i + atr );
 		}
 		modifyFlag = true;
 	}
@@ -186,7 +194,7 @@ public class VertexBuffer extends GLNode
 		super.update( gl );
 	}
 	
-	public <T extends Vertex> void update( GL3 gl, List<T> vertices )
+	public void update( GL3 gl, List<Vertex> vertices )
 	{
 		int currentCapacity = vertices.size() * _stride;
 		_size = vertices.size();
@@ -203,7 +211,7 @@ public class VertexBuffer extends GLNode
 				if( vertex.isModified() )
 				{
 					int index = i * _stride;
-					vertex.writeDataBuffer( _buffer, index );
+					vertex.copyTo( _buffer, index );
 					gl.glBufferSubData( GL3.GL_ARRAY_BUFFER, index * Float.BYTES, _stride * Float.BYTES, Buffers.newDirectFloatBuffer( _buffer, index ) );
 				}
 			}
@@ -216,7 +224,7 @@ public class VertexBuffer extends GLNode
 				Vertex vertex = vertices.get( i );
 				
 				if( vertex.isModified() )
-					vertex.writeDataBuffer( _buffer, i * _stride );
+					vertex.copyTo( _buffer, i * _stride );
 			}
 			
 			gl.glBufferData( GL3.GL_ARRAY_BUFFER, _buffer.length * Float.BYTES, Buffers.newDirectFloatBuffer( _buffer ), GL3.GL_DYNAMIC_DRAW );

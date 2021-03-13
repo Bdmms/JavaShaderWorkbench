@@ -54,6 +54,12 @@ public abstract class Importer
 		return IMPORTERS.get( extension );
 	}
 	
+	/**
+	 * Creates a String from the bytes of a file
+	 * @param file - Readable file
+	 * @return String containing the entire file data
+	 * @throws IOException If file cannot be read
+	 */
 	protected static String fileToString( File file ) throws IOException
 	{
 		byte[] data = new byte[(int)file.length()];

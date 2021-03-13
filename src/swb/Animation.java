@@ -51,12 +51,8 @@ public class Animation extends GLNode
 			vec3f pos = skeleton.position[i];
 			vec3f rot = skeleton.rotation[i];
 			
-			pos.x = data[pFrame++];
-			pos.y = data[pFrame++];
-			pos.z = data[pFrame++];
-			rot.x = data[pFrame++];
-			rot.y = data[pFrame++];
-			rot.z = data[pFrame++];
+			pos.set( data[pFrame++], data[pFrame++], data[pFrame++] );
+			rot.set( data[pFrame++], data[pFrame++], data[pFrame++] );
 			
 			/*
 			pos.x = data[pFrame++] * w0 + data[nFrame++] * w1;

@@ -9,7 +9,7 @@ import swb.Animation;
 import swb.GLNode;
 import swb.ModelUtils;
 import swb.Skeleton;
-import swb.math.Transform;
+import swb.math.mat4x4;
 import swb.math.vec3f;
 
 public class ImporterSMD extends Importer
@@ -73,6 +73,7 @@ public class ImporterSMD extends Importer
 		private int[] parent;
 		private float[] data;
 		private boolean[] processed;
+		private mat4x4 transform = new mat4x4();
 		
 		private void processAnimation( Animation animation )
 		{
@@ -107,7 +108,9 @@ public class ImporterSMD extends Importer
 			int pNodeIdx = frame + parentNode * 6;
 			int nodeIdx = frame + node * 6;
 			
-			Transform.rotate( data, nodeIdx, data, pNodeIdx + 3 );
+			transform.setTransform3D( data[pNodeIdx + 3], data[pNodeIdx + 4], data[pNodeIdx + 5], 1.0f, 1.0f, 1.0f );
+			transform.transform3f( data, nodeIdx );
+			
 			data[nodeIdx++] += data[pNodeIdx++];
 			data[nodeIdx++] += data[pNodeIdx++];
 			data[nodeIdx++] += data[pNodeIdx++];
@@ -248,12 +251,9 @@ public class ImporterSMD extends Importer
 				else
 				{
 					// Add new frame node
-					aNode.data[frameIdx++] = node.position.x;
-					aNode.data[frameIdx++] = node.position.y;
-					aNode.data[frameIdx++] = node.position.z;
-					aNode.data[frameIdx++] = node.rotation.x;
-					aNode.data[frameIdx++] = node.rotation.y;
-					aNode.data[frameIdx++] = node.rotation.z;
+					node.position.copyTo( aNode.data, frameIdx );
+					node.rotation.copyTo( aNode.data, frameIdx + 3 );
+					frameIdx += 6;
 					lastIdx += 6;
 				}
 			}
@@ -266,17 +266,5 @@ public class ImporterSMD extends Importer
 		System.out.println( animation.frames.size() + " frames of animation" );
 		
 		return aNode;
-	}
-	
-	public static void main( String[] args )
-	{
-		try 
-		{
-			new ImporterSMD().read( new File( "C:\\Users\\mmsra\\eclipse-workspace\\Shader_WorkBench\\assets\\Acerola\\SMD Animations\\anim_4.smd" ) );
-		} 
-		catch (IOException e) 
-		{
-			e.printStackTrace();
-		}
 	}
 }

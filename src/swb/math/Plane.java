@@ -10,15 +10,17 @@ public class Plane
 	public Plane( vec3f v1, vec3f v2, vec3f v3 )
 	{
 		origin = v1;
-		svec = vec3f.sub( v2, v1 );
-		tvec = vec3f.sub( v3, v1 );
+		svec = v2.from( v1 );
+		tvec = v3.from( v1 );
 		normal = svec.cross( tvec );
 	}
 	
 	public vec3f intersection( Line line )
 	{
-		vec3f lvec = vec3f.mul( line.vector, -1.0f );
-		vec3f pt = vec3f.sub( line.origin, origin );
+		vec3f lvec = line.vector.clone();
+		lvec.mul( -1.0f );
+		
+		vec3f pt = line.origin.from( origin );
 		float det = lvec.dot( normal );
 		
 		// Check if point is on plane
@@ -33,11 +35,10 @@ public class Plane
 	
 	public vec3f getPoint( float s, float t )
 	{
-		return new vec3f(
-				origin.x + svec.x * s + tvec.x * t,
-				origin.y + svec.y * s + tvec.y * t,
-				origin.z + svec.z * s + tvec.z * t
-		);
+		vec3f r = origin.clone();
+		r.addMul( svec, s );
+		r.addMul( tvec, t );
+		return r;
 	}
 	
 	public static void main( String[] args )
@@ -50,12 +51,12 @@ public class Plane
 		vec3f v5 = new vec3f( 0.0f, 0.0f, 0.0f );
 		
 		Plane plane = new Plane( v3, v2, v1 );
-		Line line = new Line( v4, vec3f.sub( v5, v4 ) );
+		Line line = new Line( v4, v5.from( v4 ) );
 		
 		vec3f result = plane.intersection( line );
 		System.out.println( result == vec3f.UNDEFINED );
 		System.out.println( result );
-		System.out.println( line.getPoint( result.x ) );
-		System.out.println( plane.getPoint( result.y, result.z ) );
+		System.out.println( line.getPoint( result.getX() ) );
+		System.out.println( plane.getPoint( result.getY(), result.getZ() ) );
 	}
 }

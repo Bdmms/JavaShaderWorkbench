@@ -10,18 +10,23 @@ import com.jogamp.opengl.awt.GLJPanel;
 import com.jogamp.opengl.util.FPSAnimator;
 
 import swb.Animation;
+import swb.Camera;
 import swb.GLDataType;
 import swb.GLNode;
+import swb.Renderer;
 import swb.ShaderCode;
 import swb.ShaderProgram;
 import swb.VertexAttribute;
 import swb.VertexBuffer;
-import swb.math.Transform;
+import swb.math.mat4x4;
+import swb.math.vec3f;
 
 public class AnimationViewer extends GLJPanel implements GLEventListener, EditorView
 {
 	private static final long serialVersionUID = 1L;
 
+	private Camera _camera;
+	private Renderer renderer;
 	private Animation animation;
 	
 	private ShaderProgram shader;
@@ -32,7 +37,7 @@ public class AnimationViewer extends GLJPanel implements GLEventListener, Editor
 	private float frame;
 	
 	private int modelLoc;
-	private float[] model = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
+	private mat4x4 model = new mat4x4();
 	
 	public AnimationViewer( Animation animation, GLCapabilities capabilities )
 	{
@@ -50,7 +55,13 @@ public class AnimationViewer extends GLJPanel implements GLEventListener, Editor
 		
 		frame = animation.startFrame;
 		
+		_camera = new Camera( this );
+		renderer = new Renderer( _camera );
+		
 		addGLEventListener( this );
+		addMouseListener( _camera );
+		addMouseMotionListener( _camera );
+		addMouseWheelListener( _camera );
 	}
 	
 	@Override
@@ -82,8 +93,8 @@ public class AnimationViewer extends GLJPanel implements GLEventListener, Editor
 			//int parent = animation.skeleton.parent[i];
 			//vec3f rotation = parent != -1 ? animation.skeleton.rotation[parent] : animation.skeleton.rotation[i];
 			
-			Transform.setMatrix( model, 0, animation.skeleton.position[i], animation.skeleton.rotation[i] );
-			gl.glUniformMatrix4fv( modelLoc, 1, true, model, 0 );
+			model.setTransform3D( animation.skeleton.position[i], animation.skeleton.rotation[i], vec3f.ONE );
+			model.upload( gl, modelLoc );
 			gl.glDrawArrays( GL3.GL_TRIANGLES, 0, boneMesh.length() );
 		}
 		
@@ -124,6 +135,7 @@ public class AnimationViewer extends GLJPanel implements GLEventListener, Editor
 		
 		ShaderCode.compileShaders( gl );
 		
+		shader.build( renderer );
 		shader.compile( gl );
 		boneMesh.update( gl );
 		modelLoc = gl.glGetUniformLocation( shader.getID(), "model" );

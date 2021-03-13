@@ -1,6 +1,7 @@
 package swb.dynamic;
 
 import com.jogamp.opengl.GL3;
+import com.jogamp.opengl.math.FloatUtil;
 
 import swb.ElementBuffer;
 import swb.GLDataType;
@@ -41,7 +42,7 @@ public class DynamicPlane extends GLNode
 		ShaderProgram program = ShaderProgram.generateProgram( "dynamicPlane" );
 		UniformList uniforms = new UniformList( "uniforms" );
 		uniforms.add( "dif_texture", GLDataType.SAMP2D, "0" );
-		uniforms.add( "timeScale", GLDataType.VEC1, String.valueOf( Math.PI * 4.0 ) );
+		uniforms.add( "timeScale", GLDataType.VEC1, String.valueOf( FloatUtil.PI * 4.0f ) );
 		uniforms.add( "frequency", GLDataType.VEC1, "100.0" );
 		uniforms.add( "amplitude", GLDataType.VEC1, "0.01" );
 		

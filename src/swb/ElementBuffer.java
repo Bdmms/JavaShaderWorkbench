@@ -44,9 +44,8 @@ public class ElementBuffer extends GLNode
 		int idx = 0;
 		for( vec3i vec : elements )
 		{
-			_buffer[idx++] = vec.x;
-			_buffer[idx++] = vec.y;
-			_buffer[idx++] = vec.z;
+			vec.copyTo( _buffer, idx );
+			idx += 3;
 		}
 		
 		compileFlag = false;

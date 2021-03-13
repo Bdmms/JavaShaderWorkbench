@@ -1,43 +1,47 @@
 package swb.math;
 
-public class vec2i 
+public class vec2i extends veci 
 {
-	public int x;
-	public int y;
+	protected vec2i( int[] arr, int offset, int size )
+	{
+		super( arr, offset, size );
+	}
+	
+	protected vec2i( String[] elements, int offset, int size )
+	{
+		super( elements, offset, size );
+	}
 	
 	public vec2i()
 	{
-		x = 0;
-		y = 0;
+		super( new int[] { 0, 0 }, 0, 2 );
 	}
 	
 	public vec2i( int x, int y )
 	{
-		this.x = x;
-		this.y = y;
+		super( new int[] { x, y }, 0, 2 );
 	}
 	
-	public vec2i( String elements )
+	public vec2i( String[] elements, int offset )
 	{
-		this( elements.split( "/" ) );
-	}
-	
-	public vec2i( String[] elements )
-	{
-		x = Integer.parseInt( elements[0] ) - 1;
-		y = Integer.parseInt( elements[1] ) - 1;
+		super( elements, offset, 2 );
 	}
 	
 	@Override
 	public boolean equals( Object o )
 	{
 		vec2i vec = (vec2i)o;
-		return (x == vec.x || x == vec.y ) && (y == vec.x || y == vec.y );
+		return (arr[idx] == vec.arr[vec.idx] || arr[idx] == vec.arr[vec.idx+1] ) 
+				&& (arr[idx+1] == vec.arr[vec.idx] || arr[idx+1] == vec.arr[vec.idx+1] );
 	}
 	
-	@Override
-	public String toString()
+	public int getX()
 	{
-		return x + ", " + y;
+		return arr[idx];
+	}
+	
+	public int getY()
+	{
+		return arr[idx+1];
 	}
 }

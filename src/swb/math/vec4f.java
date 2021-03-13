@@ -1,176 +1,169 @@
 package swb.math;
 
+/**
+ * Extension of vecf that defines 4D vectors. This class extends behavior of vec3f and vec2f, 
+ * which allow it to also be treated as a 2D vector or 3D vector.
+ * @author Sean Rannie
+ */
 public class vec4f extends vec3f
 {
-	public static final vec4f ZERO = new vec4f( 0.0f, 0.0f, 0.0f, 0.0f ); 
+	public static final vec4f ZERO = new vec4f( 0.0f ); 
 	
-	public float w;
-	
+	/**
+	 * Creates a 4D vector initialized to 0
+	 */
 	public vec4f()
 	{
-		super();
-		w = 0.0f;
+		super( new float[4], 0, 4 );
 	}
 	
+	/**
+	 * Creates a new 4D vector from an existing n-dimensional vector.
+	 * @param source - source vector
+	 */
+	public vec4f( vecf source )
+	{
+		super( new float[4], 0, 4 );
+		System.arraycopy( source.data, source.idx, data, idx, source.dim < 4 ? source.dim : 4 );
+	} 
+	
+	/**
+	 * Creates a 4D vector from an a subset of a data buffer
+	 * @param arr - data buffer
+	 * @param offset - offset into data buffer
+	 */
+	public vec4f( float[] arr, int offset )
+	{
+		super( arr, offset, 4 );
+	}
+	
+	/**
+	 * Creates a 4D vector from the given array.
+	 * @param arr - data array
+	 */
+	public vec4f( float[] arr )
+	{
+		super( arr, 0, 4 );
+	}
+	
+	/**
+	 * Creates a 4D vector initialized to the scalar value.
+	 * @param scalar - initial value of every component
+	 */
 	public vec4f( float scalar )
 	{
-		super( scalar );
-		w = scalar;
+		super( new float[] { scalar, scalar, scalar, scalar }, 0, 4 );
 	}
 	
+	/**
+	 * Creates a 4D vector initialized to the specified components.
+	 * @param x - 1st component
+	 * @param y - 2nd component
+	 * @param z - 3rd component
+	 * @param w - 4th component
+	 */
 	public vec4f( float x, float y, float z, float w )
 	{
-		super( x, y, z );
-		this.w = w;
+		super( new float[] { x, y, z, w }, 0, 4 );
 	}
 	
-	public vec4f( String[] elements )
+	/**
+	 * Constructs a 4D vector from parsed data.
+	 * The data for each element is parsed from a {@link String}.
+	 * @param elements - {@link String[]}
+	 * @param offset - offset of parsed data in elements array
+	 */
+	public vec4f( String[] elements, int offset )
 	{
-		super( elements );
-		if( elements.length > 4 )
-			w = Float.parseFloat( elements[4] );
-		else
-			w = 0.0f;
+		super( elements, offset );
 	}
 	
-	public void add( vec4f vector )
+	/**
+	 * Sets the components of the 4D vector to the color defined by the integer code.
+	 * @param color - 32-bit ARGB color code
+	 */
+	public void setColor( int color )
 	{
-		x += vector.x;
-		y += vector.y;
-		z += vector.z;
-		w += vector.w;
+		int i = idx;
+		data[i++] = ((color >> 16) & 0xFF) / 255.0f;
+		data[i++] = ((color >> 8) & 0xFF) / 255.0f;
+		data[i++] = (color & 0xFF) / 255.0f;
+		data[i  ] = ((color >> 24) & 0xFF) / 255.0f;
 	}
 	
-	public void mul( vec4f vector )
+	/**
+	 * Sets the components of the 4D vector.
+	 * @param x - 1st component
+	 * @param y - 2nd component
+	 * @param z - 3rd component
+	 * @param w - 4th component
+	 */
+	public void set( float x, float y, float z, float w )
 	{
-		x *= vector.x;
-		y *= vector.y;
-		z *= vector.z;
-		w *= vector.w;
+		int i = idx;
+		data[i++] = x;
+		data[i++] = y;
+		data[i++] = z;
+		data[i  ] = w;
 	}
 	
-	public void mul( float scalar )
-	{
-		x *= scalar;
-		y *= scalar;
-		z *= scalar;
-		w *= scalar;
-	}
-	
-	public float greyValue()
-	{
-		return ( x + y + z + w ) / 4.0f;
-	}
-	
-	public float dot( vec4f vec )
-	{
-		return x * vec.x + y * vec.y + z * vec.z + w * vec.w;
-	}
-	
-	public float dot( vec3f vec, float w )
-	{
-		return x * vec.x + y * vec.y + z * vec.z + w * this.w;
-	}
-	
+	/**
+	 * Calculates the dot product of the 4D vector with the specified components.
+	 * @param x - 1st component
+	 * @param y - 2nd component
+	 * @param z - 3rd component
+	 * @param w - 4th component
+	 * @return the result of the dot product
+	 */
 	public float dot( float x, float y, float z, float w )
 	{
-		return x * this.x + y * this.y + z * this.z + w * this.w;
+		int i = this.idx;
+		return x * data[i++] + y * data[i++] + z * data[i++] + w * data[i++];
 	}
 	
-	public vec4f projectOn( vec4f vector )
+	/**
+	 * Calculates the grey of the RGB components of the 4D color vector.
+	 * @return grey value from the RGB components
+	 */
+	public float greyValue()
 	{
-		return vec4f.mul( vector, dot( vector ) / vector.dot( vector ) );
+		return ( data[idx] + data[idx+1] + data[idx+2] ) / 3.0f;
 	}
 	
+	/**
+	 * Converts the 4D color vector into an integer color code.
+	 * @return 32-bit ARGB color code
+	 */
 	public int toRGBA()
 	{
-		int ia = w > 1.0f ? 0xFF000000 : (w < 0.0f ? 0 : (int)Math.round( w * 255.0f ) << 24 );
-		int ir = x > 1.0f ? 0xFF0000 : (x < 0.0f ? 0 : (int)Math.round( x * 255.0f ) << 16 );
-		int ig = y > 1.0f ? 0xFF00 : (y < 0.0f ? 0 : (int)Math.round( y * 255.0f ) << 8 );
-		int ib = z > 1.0f ? 0xFF : (z < 0.0f ? 0 : (int)Math.round( z * 255.0f ) );
+		int i = this.idx;
+		int ia = data[i] > 1.0f ? 0xFF000000 : (data[i] < 0.0f ? 0 : (int)Math.round( data[i] * 255.0f ) << 24 ); i++;
+		int ir = data[i] > 1.0f ? 0xFF0000 : (data[i] < 0.0f ? 0 : (int)Math.round( data[i] * 255.0f ) << 16 ); i++;
+		int ig = data[i] > 1.0f ? 0xFF00 : (data[i] < 0.0f ? 0 : (int)Math.round( data[i] * 255.0f ) << 8 ); i++;
+		int ib = data[i] > 1.0f ? 0xFF : (data[i] < 0.0f ? 0 : (int)Math.round( data[i] * 255.0f ) );
 		return ia | ir | ig | ib;
 	}
 	
 	@Override
-	public float get( int i )
-	{
-		switch( i )
-		{
-		case 0: return x;
-		case 1: return y;
-		case 2: return z;
-		case 3: return w;
-		default: return 0.0f;
-		}
-	}
-	
-	public float length()
-	{
-		return (float)Math.sqrt( x * x + y * y + z * z + w * w );
-	}
-	
-	public float length2()
-	{
-		return x * x + y * y + z * z + w * w;
-	}
-	
 	public vec4f unit()
 	{
-		return mul( this, 1.0f / length() );
+		float len = length();
+		int i = idx;
+		return new vec4f( data[i++] / len, data[i++] / len, data[i++] / len, data[i] / len );
 	}
 	
-	@Override
-	public String toString()
-	{
-		return super.toString() + ", " + w;
-	}
-	
-	public static vec4f sub( vec4f a, vec4f b )
-	{
-		return new vec4f( a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w );
-	}
-	
-	public static vec4f mul( vec4f a, float scalar )
-	{
-		return new vec4f( a.x * scalar, a.y * scalar, a.z * scalar, a.w * scalar );
-	}
-	
-	public static vec4f createVector( int color )
-	{
-		return new vec4f( ((color >> 16) & 0xFF) / 255.0f, ((color >> 8) & 0xFF) / 255.0f,
-			(color & 0xFF) / 255.0f, ((color >> 24) & 0xFF) / 255.0f );
-	}
-	
-	public static vec4f average( vec4f ... vectors )
-	{
-		vec4f average = new vec4f();
-		
-		for( vec4f vec : vectors )
-		{
-			average.x += vec.x;
-			average.y += vec.y;
-			average.z += vec.z;
-			average.w += vec.w;
-		}
-		
-		average.x /= vectors.length;
-		average.y /= vectors.length;
-		average.z /= vectors.length;
-		average.w /= vectors.length;
-		return average;
-	}
-	
-	public static vec4f average( vec4f v0, vec4f v1, float w)
-	{
-		float rw = 1.0f - w;
-		return new vec4f(
-				v0.x * rw + v1.x * w,
-				v0.y * rw + v1.y * w,
-				v0.z * rw + v1.z * w,
-				v0.w * rw + v1.w * w
-		);
-	}
-	
+	/**
+	 * TODO: Consider moving this to the base implementation class
+	 * Calculates the weight bilinear average of four 4D vectors. The first two vectors represent
+	 * the top row of a 2x2 matrix and the last two vectors represent the bottom row.
+	 * @param v0 - first vector (0,0)
+	 * @param v1 - second vector (1,0)
+	 * @param v2 - third vector (0,1)
+	 * @param v3 - fourth vector (1,1)
+	 * @param w0 - weight factor between columns
+	 * @param w1 - weight factor between rows
+	 * @return a new 4D vector from the calculated average
+	 */
 	public static vec4f average( vec4f v0, vec4f v1, vec4f v2, vec4f v3, float w0, float w1)
 	{
 		float w2 = w1 - w0 * w1;
@@ -179,15 +172,27 @@ public class vec4f extends vec3f
 		float rw1 = 1.0f - w1;
 		w1 = w0 * rw1;
 		w0 = rw1 - w0 * rw1;
+		
+		int i0 = v0.idx;
+		int i1 = v1.idx;
+		int i2 = v2.idx;
+		int i3 = v3.idx;
 
 		return new vec4f(
-				v0.x * w0 + v1.x * w1 + v2.x * w2 + v3.x * w3,
-				v0.y * w0 + v1.y * w1 + v2.y * w2 + v3.y * w3,
-				v0.z * w0 + v1.z * w1 + v2.z * w2 + v3.z * w3,
-				v0.w * w0 + v1.w * w1 + v2.w * w2 + v3.w * w3
+				v0.data[i0++] * w0 + v1.data[i1++] * w1 + v2.data[i2++] * w2 + v3.data[i3++] * w3,
+				v0.data[i0++] * w0 + v1.data[i1++] * w1 + v2.data[i2++] * w2 + v3.data[i3++] * w3,
+				v0.data[i0++] * w0 + v1.data[i1++] * w1 + v2.data[i2++] * w2 + v3.data[i3++] * w3,
+				v0.data[i0  ] * w0 + v1.data[i1  ] * w1 + v2.data[i2  ] * w2 + v3.data[i3  ] * w3
 		);
 	}
 	
+	/**
+	 * Creates a random 4D vector with each component generated randomly within
+	 * a specified range or boundary.
+	 * @param min - minimum value of range
+	 * @param max - maximum value of range
+	 * @return new randomly generated 3D vector
+	 */
 	public static vec4f random( float min, float max )
 	{
 		float diff = max - min;

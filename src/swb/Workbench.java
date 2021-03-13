@@ -19,8 +19,10 @@ import javax.swing.JSplitPane;
 
 import com.jogamp.opengl.GLCapabilities;
 import com.jogamp.opengl.GLProfile;
+import com.jogamp.opengl.math.FloatUtil;
 
 import swb.dynamic.DynamicPlane;
+import swb.dynamic.Sprite;
 import swb.editors.EditorTabs;
 import swb.math.MatrixColor;
 import swb.math.vec3f;
@@ -129,6 +131,12 @@ public class Workbench extends JFrame
 		
 		build.add( createMenuItem( "Rebuild", e -> _view.recompile() ) );
 		
+		utility.add( createMenuItem( "Generate Normal Map", e -> chooseFile( this, null, false, imageFile ->
+		{
+			
+		} ) ) );
+		
+		
 		utility.add( createMenuItem( "Generate Normal Map", e -> 
 			chooseFile( this, null, false, imageFile ->
 				new MatrixColor( imageFile ).normalMap()
@@ -143,13 +151,13 @@ public class Workbench extends JFrame
 		{
 			GLNode node = ModelUtils.createSurface( 50, 50, ModelUtils.WRAP_ALL, (s,t) -> 
 			{
-				double theta = s * Math.PI * 2.0;
-				double alpha = (t - 0.5) * Math.PI;
-				double cosa = Math.cos( alpha );
+				float theta = s * FloatUtil.PI * 2.0f;
+				float alpha = (t - 0.5f) * FloatUtil.PI;
+				float cosa = FloatUtil.cos( alpha );
 				
-				float x = (float) ( Math.cos( theta ) * cosa );
-				float y = (float) ( Math.sin( theta ) * cosa );
-				float z = (float) ( Math.sin( alpha ) );
+				float x = FloatUtil.cos( theta ) * cosa;
+				float y = FloatUtil.sin( theta ) * cosa;
+				float z = FloatUtil.sin( alpha );
 				
 				return new vec3f( x, y, z );
 			} );
@@ -168,14 +176,14 @@ public class Workbench extends JFrame
 		{
 			GLNode node = ModelUtils.createSurface( 75, 75, ModelUtils.WRAP_ALL, (s,t) -> 
 			{
-				double theta = s * Math.PI * 2.0;
-				double alpha = (t - 0.5) * Math.PI;
-				double cosa = Math.cos( alpha );
+				float theta = s * FloatUtil.PI * 2.0f;
+				float alpha = (t - 0.5f) * FloatUtil.PI;
+				float cosa = FloatUtil.cos( alpha );
 				
-				double a = Math.cos( (s + t) * 25.0 * Math.PI ) * 0.25 + 1.0;
-				float x = (float) ( Math.cos( theta ) * cosa * a );
-				float y = (float) ( Math.sin( theta ) * cosa * a );
-				float z = (float) ( Math.sin( alpha ) * a );
+				float a = FloatUtil.cos( (s + t) * 25.0f * FloatUtil.PI ) * 0.25f + 1.0f;
+				float x = FloatUtil.cos( theta ) * cosa * a;
+				float y = FloatUtil.sin( theta ) * cosa * a;
+				float z = FloatUtil.sin( alpha ) * a;
 				
 				return new vec3f( x, y, z );
 			} );
@@ -187,6 +195,12 @@ public class Workbench extends JFrame
 		utility.add( createMenuItem( "Create Skybox", e -> 
 		{
 			_modelTree.add( CubeMap.generateSkybox( "assets\\cubemap\\sky", ".png" ) );
+			_view.recompile();
+		} ) );
+		
+		utility.add( createMenuItem( "Create Sprite", e -> 
+		{
+			_modelTree.add( Sprite.generateSprite( "Test Sprite" ) );
 			_view.recompile();
 		} ) );
 		

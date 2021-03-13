@@ -1,140 +1,200 @@
 package swb.math;
 
-public class vec2f
+import com.jogamp.opengl.GL3;
+import com.jogamp.opengl.math.Vert2fImmutable;
+
+/**
+ * Extension of vecf that defines 2D vectors.
+ * @author Sean Rannie
+ */
+public class vec2f extends vecf implements Vert2fImmutable
 {
-	public static final byte XYPLANE = 0;
-	public static final byte YZPLANE = 1;
-	public static final byte XZPLANE = 2;
-	public static final byte YXPLANE = 3;
-	public static final byte ZYPLANE = 4;
-	public static final byte ZXPLANE = 5;
-	public static final vec2f ZERO = new vec2f( 0.0f, 0.0f ); 
+	public static final vec2f ZERO = new vec2f( 0.0f );
 	
-	public float x;
-	public float y;
+	/**
+	 * Protected constructor that allows overriding of size
+	 * @param data - data buffer
+	 * @param offset - offset into data buffer
+	 * @param size - size of the vector
+	 */
+	protected vec2f( float[] arr, int offset, int size )
+	{
+		super( arr, offset, size );
+	}
 	
+	/**
+	 * Protected constructor that allows overriding of size
+	 * @param elements - {@link String[]}
+	 * @param offset - offset of parsed data in elements array
+	 * @param size - size of the vector
+	 */
+	protected vec2f( String[] elements, int offset, int size )
+	{
+		super( elements, offset, size );
+	}
+	
+	/**
+	 * Creates a new 2D vector from an existing n-dimensional vector.
+	 * @param source - source vector
+	 */
+	public vec2f( vecf source )
+	{
+		super( new float[2], 0, 2 );
+		System.arraycopy( source.data, source.idx, data, idx, source.dim < 2 ? source.dim : 2 );
+	} 
+	
+	/**
+	 * Creates a 2D vector initialized to 0
+	 */
 	public vec2f()
 	{
-		this.x = 0.0f;
-		this.y = 0.0f;
+		super( new float[2], 0, 2 );
 	}
 	
+	/**
+	 * Creates a 2D vector from an a subset of a data buffer
+	 * @param arr - data buffer
+	 * @param offset - offset into data buffer
+	 */
+	public vec2f( float[] arr, int offset )
+	{
+		super( arr, offset, 2 );
+	}
+	
+	/**
+	 * Creates a 2D vector from the given array.
+	 * @param arr - data array
+	 */
+	public vec2f( float[] arr )
+	{
+		super( arr, 0, 2 );
+	}
+	
+	/**
+	 * Creates a 2D vector initialized to the scalar value.
+	 * @param scalar - initial value of every component
+	 */
 	public vec2f( float scalar )
 	{
-		this.x = scalar;
-		this.y = scalar;
+		this( scalar, scalar );
 	}
 	
+	/**
+	 * Creates a 2D vector initialized to the specified components.
+	 * @param x - 1st component
+	 * @param y - 2nd component
+	 */
 	public vec2f( float x, float y )
 	{
-		this.x = x;
-		this.y = y;
+		super( new float[] { x, y }, 0, 2 );
 	}
 	
-	public vec2f( String[] elements )
+	/**
+	 * Constructs a 2D vector from parsed data.
+	 * The data for each element is parsed from a {@link String}.
+	 * @param elements - {@link String[]}
+	 * @param offset - offset of parsed data in elements array
+	 */
+	public vec2f( String[] elements, int offset )
 	{
-		x = Float.parseFloat( elements[1] );
-		y = Float.parseFloat( elements[2] );
+		super( elements, offset, 2 );
 	}
 	
-	public void add( vec2f vector )
+	/**
+	 * Sets the components of the 2D vector.
+	 * @param x - 1st component
+	 * @param y - 2nd component
+	 */
+	public void set( float x, float y )
 	{
-		x += vector.x;
-		y += vector.y;
+		data[idx  ] = x;
+		data[idx+1] = y;
 	}
 	
-	public void sub( vec2f vector )
+	/**
+	 * Calculates the dot product of the 2D vector with the specified components.
+	 * @param x - 1st component
+	 * @param y - 2nd component
+	 * @return the result of the dot product
+	 */
+	public float dot( float x, float y )
 	{
-		x -= vector.x;
-		y -= vector.y;
+		return x * data[idx] + y * data[idx+1];
 	}
 	
-	public void mul( float scalar )
-	{
-		x *= scalar;
-		y *= scalar;
-	}
-	
-	public void div( float scalar )
-	{
-		x /= scalar;
-		y /= scalar;
-	}
-	
-	public float dot( vec2f vec )
-	{
-		return x * vec.x + y * vec.y;
-	}
-	
+	/**
+	 * Calculates the cross product of this vector with another 2D vector.
+	 * @param vec - secondary 2D vector
+	 * @return new 3D vector from the cross product
+	 */
 	public vec3f cross( vec2f vec )
 	{
-		return new vec3f( 0.0f, 0.0f, x * vec.y - y * vec.x );
+		return new vec3f( 0.0f, 0.0f, data[idx] * vec.data[idx+1] - data[idx+1] * vec.data[idx] );
 	}
 	
-	public vec2f projectOn( vec2f vector )
+	/**
+	 * Calculates the cross product of this vector with another 3D vector.
+	 * @param vec - secondary 3D vector
+	 * @return new 3D vector from the cross product
+	 */
+	public vec3f cross( vec3f vec )
 	{
-		return vec2f.mul( vector, dot( vector ) / vector.dot( vector ) );
+		return new vec3f( 
+				data[idx+1] * vec.data[idx+2], -data[idx  ] * vec.data[idx+2],
+				data[idx  ] * vec.data[idx+1] - data[idx+1] * vec.data[idx  ]
+		);
 	}
 	
-	public float length()
+	/**
+	 * Sets the uniform value of the vector using a {@link GL3} instance.
+	 * This operation can be reused with different shader programs. The
+	 * vector is not bounded to a specific shader or location.
+	 * @param gl - {@link GL3} instance
+	 * @param loc - location of uniform
+	 */
+	public void upload( GL3 gl, int loc )
 	{
-		return (float)Math.sqrt( x * x + y * y );
+		gl.glUniform2fv( loc, 1, data, idx );
 	}
 	
-	public float length2()
-	{
-		return x * x + y * y;
-	}
-	
+	@Override
 	public vec2f unit()
 	{
-		return mul( this, 1.0f / length() );
+		float len = length();
+		return new vec2f( data[idx] / len, data[idx+1] / len );
 	}
 	
-	public float get( int i )
+	@Override
+	public float[] getCoord() 
 	{
-		switch( i )
-		{
-		case 0: return x;
-		case 1: return y;
-		default: return 0.0f;
-		}
+		float[] copy = new float[dim];
+		System.arraycopy( data, idx, copy, 0, dim );
+		return copy;
+	}
+	
+	@Override
+	public int getCoordCount() 
+	{
+		return dim;
+	}
+
+	@Override
+	public float getX() 
+	{
+		return data[idx];
+	}
+
+	@Override
+	public float getY() 
+	{
+		return data[idx+1];
 	}
 	
 	@Override
 	public vec2f clone()
 	{
-		return new vec2f( x, y );
-	}
-	
-	@Override
-	public String toString()
-	{
-		return x + ", " + y;
-	}
-	
-	public static vec2f sub( vec2f a, vec2f b )
-	{
-		return new vec2f( a.x - b.x, a.y - b.y );
-	}
-	
-	public static vec2f mul( vec2f a, float scalar )
-	{
-		return new vec2f( a.x * scalar, a.y * scalar );
-	}
-	
-	public static vec2f average( vec2f ... vectors )
-	{
-		vec2f average = new vec2f();
-		
-		for( vec2f vec : vectors )
-		{
-			average.x += vec.x;
-			average.y += vec.y;
-		}
-		
-		average.x /= vectors.length;
-		average.y /= vectors.length;
-		return average;
+		float[] cloned = new float[2];
+		System.arraycopy( data, idx, cloned, 0, 2 );
+		return new vec2f( cloned );
 	}
 }

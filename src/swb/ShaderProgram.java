@@ -12,10 +12,7 @@ import swb.editors.ShaderEditor;
 public class ShaderProgram extends GLNode
 {
 	// Shader Global Uniforms
-	public static float timer = 0.0f;
-	public static float[] viewPos = { 0, 0, 0 };
-	public static float[] view = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
-	public static float[] projection = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
+	public Camera view = null;
 	
 	private List<ShaderCode> shaders = new ArrayList<>();
 	
@@ -46,6 +43,9 @@ public class ShaderProgram extends GLNode
 	@Override
 	public boolean build( Renderer renderer )
 	{
+		view = renderer.camera;
+		if( view == null ) return false;
+		
 		for( ShaderCode shader : shaders )
 		{
 			compileFlag &= !shader.modifyFlag;
@@ -108,10 +108,10 @@ public class ShaderProgram extends GLNode
 		gl.glUseProgram( _shaderID );
 		
 		// Update Global Uniforms
-		gl.glUniform1f( _timerLoc, timer );
-		gl.glUniform3fv( _posLoc, 1, viewPos, 0 );
-		gl.glUniformMatrix4fv( _viewLoc, 1, true, view, 0);
-		gl.glUniformMatrix4fv( _projLoc, 1, true, projection, 0);
+		gl.glUniform1f( _timerLoc, view.timer );
+		view.position.upload( gl, _posLoc );
+		view.view.upload( gl, _viewLoc );
+		view.projection.upload( gl, _projLoc );
 	}
 	
 	@Override

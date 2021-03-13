@@ -1,220 +1,200 @@
 package swb.math;
 
-import java.util.List;
+import com.jogamp.opengl.GL3;
+import com.jogamp.opengl.math.Vert3fImmutable;
 
-public class vec3f extends vec2f
+/**
+ * Extension of vecf that defines 3D vectors. This class extends behavior of vec2f, 
+ * which allow it to also be treated as a 2D vector.
+ * @author Sean Rannie
+ */
+public class vec3f extends vec2f implements Vert3fImmutable
 {
-	public static final vec3f UNDEFINED = new vec3f( 0.0f, 0.0f, 0.0f ); 
-	public static final vec3f ZERO = new vec3f( 0.0f, 0.0f, 0.0f ); 
+	public static final vec3f UNDEFINED = new vec3f( Float.NaN, Float.NaN, Float.NaN ); 
+	public static final vec3f ZERO = new vec3f( 0.0f ); 
+	public static final vec3f ONE = new vec3f( 1.0f ); 
 	
-	public float z;
+	/**
+	 * Protected constructor that allows overriding of size
+	 * @param data - data buffer
+	 * @param offset - offset into data buffer
+	 * @param size - size of the vector
+	 */
+	protected vec3f( float[] arr, int offset, int size )
+	{
+		super( arr, offset, size );
+	}
 	
+	/**
+	 * Protected constructor that allows overriding of size
+	 * @param elements - {@link String[]}
+	 * @param offset - offset of parsed data in elements array
+	 * @param size - size of the vector
+	 */
+	protected vec3f( String[] elements, int offset, int size )
+	{
+		super( elements, offset, size );
+	}
+	
+	/**
+	 * Creates a new 3D vector from an existing n-dimensional vector.
+	 * @param source - source vector
+	 */
+	public vec3f( vecf source )
+	{
+		super( new float[3], 0, 3 );
+		System.arraycopy( source.data, source.idx, data, idx, source.dim < 3 ? source.dim : 3 );
+	} 
+	
+	/**
+	 * Creates a 3D vector initialized to 0
+	 */
 	public vec3f()
 	{
-		super();
-		this.z = 0.0f;
+		super( new float[3], 0, 3 );
 	}
 	
-	public vec3f( vec3f copy )
+	/**
+	 * Creates a 3D vector from an a subset of a data buffer
+	 * @param arr - data buffer
+	 * @param offset - offset into data buffer
+	 */
+	public vec3f( float[] arr, int offset )
 	{
-		super( copy.x, copy.y );
-		this.z = copy.z;
+		super( arr, offset, 3 );
 	}
 	
+	/**
+	 * Creates a 3D vector from the given array.
+	 * @param arr - data array
+	 */
+	public vec3f( float[] arr )
+	{
+		super( arr, 0, 3 );
+	}
+	
+	/**
+	 * Creates a 3D vector initialized to the scalar value.
+	 * @param scalar - initial value of every component
+	 */
 	public vec3f( float scalar )
 	{
-		super( scalar );
-		this.z = scalar;
+		this( scalar, scalar, scalar );
 	}
 	
+	/**
+	 * Creates a 3D vector initialized to the specified components.
+	 * @param x - 1st component
+	 * @param y - 2nd component
+	 * @param z - 3rd component
+	 */
 	public vec3f( float x, float y, float z )
 	{
-		super( x, y );
-		this.z = z;
+		super( new float[] { x, y, z }, 0, 3 );
 	}
 	
-	public vec3f( String[] elements )
+	/**
+	 * Constructs a 3D vector from parsed data.
+	 * The data for each element is parsed from a {@link String}.
+	 * @param elements - {@link String[]}
+	 * @param offset - offset of parsed data in elements array
+	 */
+	public vec3f( String[] elements, int offset )
 	{
-		super( elements );
-		if( elements.length > 3 )
-			z = Float.parseFloat( elements[3] );
-		else
-			z = 0.0f;
+		super( elements, offset, 3 );
 	}
 	
-	public void set( vec3f vector )
+	/**
+	 * Creates a new 3D vector from the displacement vector starting from another vector to this vector.
+	 * @param vec - secondary vector
+	 * @return the new displacement vector between the two vectors
+	 */
+	public vec3f from( vec3f vec )
 	{
-		x = vector.x;
-		y = vector.y;
-		z = vector.z;
+		int i = idx;
+		int j = vec.idx;
+		return new vec3f( data[i++] - vec.data[j++], data[i++] - vec.data[j++], data[i] - vec.data[j] );
 	}
 	
-	public void add( vec3f vector )
+	/**
+	 * Sets the components of the 3D vector.
+	 * @param x - 1st component
+	 * @param y - 2nd component
+	 * @param z - 3rd component
+	 */
+	public void set( float x, float y, float z )
 	{
-		x += vector.x;
-		y += vector.y;
-		z += vector.z;
+		data[idx  ] = x;
+		data[idx+1] = y;
+		data[idx+2] = z;
 	}
 	
-	public void sub( vec3f vector )
-	{
-		x -= vector.x;
-		y -= vector.y;
-		z -= vector.z;
-	}
-	
-	public void mul( float scalar )
-	{
-		x *= scalar;
-		y *= scalar;
-		z *= scalar;
-	}
-	
-	public void div( float scalar )
-	{
-		x /= scalar;
-		y /= scalar;
-		z /= scalar;
-	}
-	
-	public float dot( vec3f vec )
-	{
-		return x * vec.x + y * vec.y + z * vec.z;
-	}
-	
+	/**
+	 * Calculates the dot product of the 3D vector with the specified components.
+	 * @param x - 1st component
+	 * @param y - 2nd component
+	 * @param z - 3rd component
+	 * @return the result of the dot product
+	 */
 	public float dot( float x, float y, float z )
 	{
-		return x * this.x + y * this.y + z * this.z;
+		int i = idx;
+		return data[i++] * x + data[i++] * y + data[i++] * z;
 	}
 	
-	public vec3f cross( vec3f vec )
+	@Override
+	public vec3f cross( vec2f vec )
 	{
 		return new vec3f( 
-				y * vec.z - z * vec.y, 
-				z * vec.x - x * vec.z, 
-				x * vec.y - y * vec.x
+				-data[idx+2] * vec.data[idx+1], data[idx+2] * vec.data[idx  ],
+				data[idx  ] * vec.data[idx+1] - data[idx+1] * vec.data[idx  ]
 		);
 	}
 	
-	public void normalize()
+	@Override
+	public vec3f cross( vec3f vec )
 	{
-		div( length() );
-	}
-	
-	public vec3f normalized()
-	{
-		return vec3f.mul( this, 1.0f / length() );
-	}
-	
-	public vec3f projectOn( vec3f vector )
-	{
-		return vec3f.mul( vector, dot( vector ) / vector.dot( vector ) );
+		return new vec3f( 
+				data[idx+1] * vec.data[idx+2] - data[idx+2] * vec.data[idx+1], 
+				data[idx+2] * vec.data[idx  ] - data[idx  ] * vec.data[idx+2],
+				data[idx  ] * vec.data[idx+1] - data[idx+1] * vec.data[idx  ]
+		);
 	}
 	
 	@Override
-	public float get( int i )
+	public void upload( GL3 gl, int loc )
 	{
-		switch( i )
-		{
-		case 0: return x;
-		case 1: return y;
-		case 2: return z;
-		default: return 0.0f;
-		}
-	}
-	
-	@Override
-	public float length()
-	{
-		return (float)Math.sqrt( x * x + y * y + z * z );
-	}
-	
-	@Override
-	public float length2()
-	{
-		return x * x + y * y + z * z;
+		gl.glUniform3fv( loc, 1, data, idx );
 	}
 	
 	@Override
 	public vec3f unit()
 	{
-		return mul( this, 1.0f / length() );
+		float len = length();
+		return new vec3f( data[idx] / len, data[idx+1] / len, data[idx+2] / len );
 	}
 	
 	@Override
-	public String toString()
+	public float getZ() 
 	{
-		return super.toString() + ", " + z;
+		return data[idx+2];
 	}
 	
-	public boolean equals( vec3f v, float threshold )
+	@Override
+	public vec3f clone()
 	{
-		return Math.abs( v.x - x ) < threshold && Math.abs( v.y - y ) < threshold && Math.abs( v.z - z ) < threshold;
+		float[] cloned = new float[3];
+		System.arraycopy( data, idx, cloned, 0, 3 );
+		return new vec3f( cloned );
 	}
 	
-	public static vec3f add( vec3f a, vec3f b )
-	{
-		return new vec3f( a.x + b.x, a.y + b.y, a.z + b.z );
-	}
-	
-	public static vec3f sub( vec3f a, vec3f b )
-	{
-		return new vec3f( a.x - b.x, a.y - b.y, a.z - b.z );
-	}
-	
-	public static vec3f mul( vec3f a, float scalar )
-	{
-		return new vec3f( a.x * scalar, a.y * scalar, a.z * scalar );
-	}
-	
-	public static vec3f average( vec3f ... vectors )
-	{
-		vec3f average = new vec3f();
-		
-		for( vec3f vec : vectors )
-		{
-			average.x += vec.x;
-			average.y += vec.y;
-			average.z += vec.z;
-		}
-		
-		average.x /= vectors.length;
-		average.y /= vectors.length;
-		average.z /= vectors.length;
-		return average;
-	}
-	
-	public static vec3f average( List<vec3f> vectors )
-	{
-		vec3f average = new vec3f();
-		
-		for( vec3f vec : vectors )
-		{
-			average.x += vec.x;
-			average.y += vec.y;
-			average.z += vec.z;
-		}
-		
-		average.x /= vectors.size();
-		average.y /= vectors.size();
-		average.z /= vectors.size();
-		return average;
-	}
-	
-	public static vec3f map( vec2f vector, float value, byte map )
-	{
-		switch( map )
-		{
-		default:	
-		case XYPLANE: return new vec3f( vector.x, vector.y, value );
-		case YZPLANE: return new vec3f( value, vector.x, vector.y );
-		case XZPLANE: return new vec3f( vector.x, value, vector.y );
-		case YXPLANE: return new vec3f( vector.y, vector.x, value );
-		case ZYPLANE: return new vec3f( value, vector.y, vector.x );
-		case ZXPLANE: return new vec3f( vector.y, value, vector.x );
-		}
-	}
-	
+	/**
+	 * Creates a random 3D vector with each component generated randomly within
+	 * a specified range or boundary.
+	 * @param min - minimum value of range
+	 * @param max - maximum value of range
+	 * @return new randomly generated 3D vector
+	 */
 	public static vec3f random( float min, float max )
 	{
 		float diff = max - min;

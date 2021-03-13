@@ -2,43 +2,34 @@ package swb.math;
 
 public class vec3i extends vec2i
 {
-	public int z;
-	
 	public vec3i()
 	{
-		super();
-		z = 0;
+		super( new int[] { 0, 0, 0 }, 0, 3 );
 	}
 	
 	public vec3i( int x, int y, int z )
 	{
-		super( x, y );
-		this.z = z;
+		super( new int[] { x, y, z }, 0, 3 );
 	}
 	
-	public vec3i( String elements )
+	public vec3i( String[] elements, int offset )
 	{
-		this( elements.split( "/" ) );
-	}
-	
-	public vec3i( String[] elements )
-	{
-		super( elements );
-		z = Integer.parseInt( elements[2] ) - 1;
+		super( elements, offset, 3 );
 	}
 	
 	@Override
 	public boolean equals( Object o )
 	{
 		vec3i vec = (vec3i)o;
-		return  (x == vec.x || x == vec.y || x == vec.z) && 
-				(y == vec.x || y == vec.y || y == vec.z) &&
-				(z == vec.x || x == vec.y || z == vec.z);
+		
+		int i = idx;
+		return (arr[i] == vec.arr[vec.idx] || arr[i] == vec.arr[vec.idx+1] || arr[i++] == vec.arr[vec.idx+2] ) &&
+			   (arr[i] == vec.arr[vec.idx] || arr[i] == vec.arr[vec.idx+1] || arr[i++] == vec.arr[vec.idx+2] ) &&
+			   (arr[i] == vec.arr[vec.idx] || arr[i] == vec.arr[vec.idx+1] || arr[i  ] == vec.arr[vec.idx+2] );
 	}
 	
-	@Override
-	public String toString()
+	public int getZ()
 	{
-		return x + ", " + y + ", " + z;
+		return arr[idx+2];
 	}
 }

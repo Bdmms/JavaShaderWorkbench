@@ -6,6 +6,8 @@ import java.util.function.BiFunction;
 
 import javax.imageio.ImageIO;
 
+import com.jogamp.opengl.math.FloatUtil;
+
 public class MatrixColor extends Matrix<vec4f>
 {
 	public static final MatrixInstance<vec4f> TYPE = new MatrixInstance<vec4f>()
@@ -44,8 +46,13 @@ public class MatrixColor extends Matrix<vec4f>
 		this( image.getWidth(), image.getHeight() );
 		
 		for( int y = 0, i = 0; y < height; y++ )
-			for( int x = 0; x < width; x++ )
-				data[i++] = vec4f.createVector( image.getRGB( x, y ) );
+		{
+			for( int x = 0; x < width; x++, i++ )
+			{
+				data[i] = new vec4f();
+				data[i].setColor( image.getRGB( x, y ) );
+			}
+		}
 	}
 	
 	public MatrixColor( MatrixColor matrix )
@@ -62,17 +69,29 @@ public class MatrixColor extends Matrix<vec4f>
 	@Override
 	public vec4f average()
 	{
-		return vec4f.average( data );
+		vec4f avg = new vec4f();
+		vecf.average( avg, data );
+		return avg;
 	}
 	
 	@Override
 	public Matrix<vec4f> gradient( BiFunction<vec4f, vec4f, vec4f> gradientFunc )
 	{
+		vec4f v0 = new vec4f();
+		vec4f v1 = new vec4f();
+		vec4f v2 = new vec4f();
+		
 		return filter( 3, mat -> 
 		{
-			vec4f dx = vec4f.average( vec4f.sub( mat.data[4], mat.data[3] ), vec4f.sub( mat.data[5], mat.data[4] ) );
-			vec4f dy = vec4f.average( vec4f.sub( mat.data[4], mat.data[1] ), vec4f.sub( mat.data[7], mat.data[4] ) );
-			return gradientFunc.apply( dx,  dy );
+			vecf.sub( v0, mat.data[4], mat.data[3] );
+			vecf.sub( v1, mat.data[5], mat.data[4] );
+			v0.add( v1 );
+			v0.mul( 0.5f );
+			vecf.sub( v1, mat.data[4], mat.data[1] );
+			vecf.sub( v2, mat.data[7], mat.data[4] );
+			v1.add( v2 );
+			v1.mul( 0.5f );
+			return gradientFunc.apply( v0, v1 );
 		} );
 	}
 	
@@ -93,7 +112,7 @@ public class MatrixColor extends Matrix<vec4f>
 	{
 		return greyscale().gradient( (dx,dy) -> 
 		{
-			float c = (float)Math.sqrt( dx * dx + dy * dy + 1.0f );
+			float c = FloatUtil.sqrt( dx * dx + dy * dy + 1.0f );
 			return new vec4f( (-dx  / c + 1.0f) * 0.5f, (-dy  / c + 1.0f) * 0.5f, 1.0f / c, 1.0f );
 		} );
 	}

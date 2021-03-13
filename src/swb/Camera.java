@@ -3,32 +3,38 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
 
+import com.jogamp.opengl.awt.GLJPanel;
+import com.jogamp.opengl.math.FloatUtil;
+
+import swb.math.mat4x4;
 import swb.math.vec3f;
 
 public class Camera extends MouseAdapter
 {
-	public final static float PI = (float)Math.PI;
-	public final static float HALF_PI = PI / 2.0f;
-	public final static float MIN_FOV = PI / 180.0f;
-	public final static float MAX_FOV = PI / 4.0f;
+	public final static float HALF_PI = FloatUtil.PI / 2.0f;
+	public final static float MIN_FOV = FloatUtil.PI / 180.0f;
+	public final static float MAX_FOV = FloatUtil.PI / 4.0f;
 	public final static float SENSITIVITY = 2.0f;
 	
-	private View3D viewport;
+	private GLJPanel viewport;
 	
-	private vec3f position = new vec3f( 0.0f, 0.0f, 3.0f );
-	private vec3f cameraFront = new vec3f( 0.0f, 0.0f, -1.0f );
-	private vec3f cameraUp = new vec3f( 0.0f, 1.0f, 0.0f );
+	public float timer = 0.0f;
+	public final mat4x4 view = new mat4x4();
+	public final mat4x4 projection = new mat4x4();
+	public final vec3f position = new vec3f( 0.0f, 0.0f, 3.0f );
+	public final vec3f cameraFront = new vec3f( 0.0f, 0.0f, -1.0f );
+	public final vec3f cameraUp = new vec3f( 0.0f, 1.0f, 0.0f );
 	
 	private float ratio = 1.0f;
 	private float fov = MAX_FOV;
 	private float pitch = 0.0f;
-	private float yaw = (float)(-Math.PI / 2.0);
+	private float yaw = FloatUtil.PI / -2.0f;
 	
 	private int buttonPress = 0;
 	private int lastX;
 	private int lastY;
 	
-	public Camera( View3D viewport )
+	public Camera( GLJPanel viewport )
 	{
 		this.viewport = viewport;
 		updateView();
@@ -44,18 +50,13 @@ public class Camera extends MouseAdapter
 	
 	private void updateView()
 	{
-		lookAt( ShaderProgram.view, position, cameraFront, cameraUp );
-		
-		ShaderProgram.viewPos[0] = position.x;
-		ShaderProgram.viewPos[1] = position.y;
-		ShaderProgram.viewPos[2] = position.z;
-		
+		view.lookAt( position, cameraFront, cameraUp );
 		viewport.repaint();
 	}
 	
 	private void updateProjection()
 	{
-		perspective( ShaderProgram.projection, fov, ratio, 0.1f, 100.0f );
+		projection.setPerspective( fov, ratio, 0.1f, 100.0f );
 		viewport.repaint();
 	}
 	
@@ -86,23 +87,25 @@ public class Camera extends MouseAdapter
 				if ( pitch >=  HALF_PI ) pitch = HALF_PI - 0.01f;
 				if ( pitch <= -HALF_PI ) pitch = 0.01f - HALF_PI;
 
-				cameraFront.x = (float)( Math.cos( yaw ) * Math.cos( pitch ) );
-				cameraFront.y = (float)( Math.sin( pitch ) );
-				cameraFront.z = (float)( Math.sin( yaw ) * Math.cos( pitch ) );
+				cameraFront.set( 
+						FloatUtil.cos( yaw ) * FloatUtil.cos( pitch ),
+						FloatUtil.sin( pitch ),
+						FloatUtil.sin( yaw ) * FloatUtil.cos( pitch )
+				);
 				cameraFront.normalize();
 				break;
 			}
 			case MouseEvent.BUTTON2:
 			{
-				position.add( vec3f.mul( cameraFront, yOffset * 5.0f ) );
+				position.addMul( cameraFront, yOffset * 5.0f );
 				break;
 			}
 			case MouseEvent.BUTTON3:
 			{
 				vec3f cameraSide = cameraFront.cross( cameraUp );
 				cameraSide.normalize();
-				position.sub( vec3f.mul( cameraSide, xOffset * 5.0f ) );
-				position.sub( vec3f.mul( cameraUp, yOffset * 5.0f ) );
+				position.subMul( cameraSide, xOffset * 5.0f );
+				position.subMul( cameraUp, yOffset * 5.0f );
 				break;
 			}
 		}
@@ -116,31 +119,5 @@ public class Camera extends MouseAdapter
 		lastX = e.getX();
 		lastY = e.getY();
 		buttonPress = e.getButton();
-	}
-	
-	public static void lookAt( float[] view, vec3f eye, vec3f front, vec3f up )
-	{
-		vec3f f = front.normalized();
-		vec3f s = f.cross( up.normalized() );
-		s.normalize();
-		vec3f u = s.cross( f );
-		
-		view[ 0] = s.x; 	view[ 1] = s.y; 	view[ 2] = s.z; 	view[ 3] = -s.dot( eye );
-		view[ 4] = u.x; 	view[ 5] = u.y; 	view[ 6] = u.z; 	view[ 7] = -u.dot( eye );
-		view[ 8] = -f.x; 	view[ 9] = -f.y; 	view[10] = -f.z; 	view[11] = f.dot( eye );
-		view[12] = 0.0f; 	view[13] = 0.0f; 	view[14] = 0.0f; 	view[15] = 1.0f;
-	}
-	
-	public static void perspective( float[] projection, float fov, float ratio, float near, float far )
-	{
-		float tanHalf = (float)Math.atan( fov / 2.0f );
-		projection[ 0] = 1 / ( ratio * tanHalf );		projection[ 1] = 0.0f;			
-		projection[ 2] = 0.0f;							projection[ 3] = 0.0f;
-		projection[ 4] = 0.0f;							projection[ 5] = 1 / tanHalf;	
-		projection[ 6] = 0.0f;							projection[ 7] = 0.0f;
-		projection[ 8] = 0.0f;							projection[ 9] = 0.0f;			
-		projection[10] = (far + near) / (near - far);	projection[11] = -2.0f * far * near / (far - near);
-		projection[12] = 0.0f;							projection[13] = 0.0f;			
-		projection[14] = -1.0f;							projection[15] = 0.0f;
 	}
 }

@@ -1,19 +1,27 @@
 package swb;
 
-public interface Vertex
+import swb.math.vecf;
+
+/**
+ * Defines the structure of a vertex in a VertexBuffer.
+ * Used when the vertices are dynamically modified.
+ * @author Sean Rannie
+ */
+public abstract class Vertex extends vecf
 {
-	public String toString();
-	public float[] getData();
-	
-	public void writeDataBuffer( float[] buffer, int offset );
-	public boolean isModified();
-	
-	public static String[] toStringArr( Vertex vertex )
+	public Vertex(float[] arr, int offset, int size) 
 	{
-		float[] arr = vertex.getData();
-		String[] sArr = new String[ arr.length ];
-		for( int i = 0; i < arr.length; i++ )
-			sArr[i] = Float.toString( arr[i] );
-		return sArr;
+		super(arr, offset, size);
 	}
+	
+	public Vertex(int size) 
+	{
+		super(size);
+	}
+	
+	/**
+	 * Checks if the vertex has been modified
+	 * @return Whether the vertex has been modified
+	 */
+	public abstract boolean isModified();
 }

@@ -60,20 +60,14 @@ public class TransformDialog extends JDialog
 		@Override
 		public Object getValueAt( int row, int col ) 
 		{
-			return matrix.get( row ).get( col );
+			return matrix.get( col + row * 4 );
 		}
 		
 		public void setValueAt( Object value, int row, int col )
 		{
 			try
 			{
-				switch( col )
-				{
-				case 0: matrix.get( row ).x = Float.parseFloat( value.toString() ); break;
-				case 1: matrix.get( row ).y = Float.parseFloat( value.toString() ); break;
-				case 2: matrix.get( row ).z = Float.parseFloat( value.toString() ); break;
-				case 3: matrix.get( row ).w = Float.parseFloat( value.toString() ); break;
-				}
+				matrix.set( col + row * 4, Float.parseFloat( value.toString() ) );
 			}
 			catch( NumberFormatException e ) {}
 		}
