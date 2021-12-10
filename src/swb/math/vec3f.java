@@ -203,4 +203,33 @@ public class vec3f extends vec2f implements Vert3fImmutable
 				min + (float)Math.random() * diff,
 				min + (float)Math.random() * diff );
 	}
+	
+	public static vec3f[] wrap( float[] buffer )
+	{
+		if( buffer.length % 3 != 0 ) throw new IndexOutOfBoundsException( "Buffer size is incompatible with 3D vectors" );
+		
+		vec3f[] vectors = new vec3f[buffer.length / 3];
+		for( int i = 0; i < vectors.length; i++ )
+			vectors[i] = new vec3f( buffer, i * 3 );
+		
+		return vectors;
+	}
+	
+	/**
+	 * Calculates the normal of triangle from three points
+	 * @param v0 - first point
+	 * @param v1 - second point
+	 * @param v2 - third point
+	 * @return normal vector of triangle
+	 */
+	public static vec3f triangleNormal( vec3f v0, vec3f v1, vec3f v2 )
+	{
+		float dx0 = v1.data[v1.idx  ] - v0.data[v0.idx  ];
+		float dx1 = v2.data[v2.idx  ] - v0.data[v0.idx  ];
+		float dy0 = v1.data[v1.idx+1] - v0.data[v0.idx+1];
+		float dy1 = v2.data[v2.idx+1] - v0.data[v0.idx+1];
+		float dz0 = v1.data[v1.idx+2] - v0.data[v0.idx+2];
+		float dz1 = v2.data[v2.idx+2] - v0.data[v0.idx+2];
+		return new vec3f( dy0 * dz1 - dz0 * dy1, dz0 * dx1 - dx0 * dz1, dx0 * dy1 - dy0 * dx1 );
+	}
 }

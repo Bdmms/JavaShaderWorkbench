@@ -80,7 +80,7 @@ public class MaterialTable extends EditorTable
 		@Override
 		public void removeRow() 
 		{
-			material.removeLast();
+			material.children().removeLast();
 		}
 		
 		@Override

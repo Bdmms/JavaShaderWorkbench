@@ -1,9 +1,9 @@
 package swb;
+
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
 
-import com.jogamp.opengl.awt.GLJPanel;
 import com.jogamp.opengl.math.FloatUtil;
 
 import swb.math.mat4x4;
@@ -16,33 +16,27 @@ public class Camera extends MouseAdapter
 	public final static float MAX_FOV = FloatUtil.PI / 4.0f;
 	public final static float SENSITIVITY = 2.0f;
 	
-	private GLJPanel viewport;
-	
-	public float timer = 0.0f;
 	public final mat4x4 view = new mat4x4();
 	public final mat4x4 projection = new mat4x4();
 	public final vec3f position = new vec3f( 0.0f, 0.0f, 3.0f );
 	public final vec3f cameraFront = new vec3f( 0.0f, 0.0f, -1.0f );
 	public final vec3f cameraUp = new vec3f( 0.0f, 1.0f, 0.0f );
 	
-	private float ratio = 1.0f;
-	private float fov = MAX_FOV;
-	private float pitch = 0.0f;
-	private float yaw = FloatUtil.PI / -2.0f;
+	protected float ratio = 1.0f;
+	protected float fov = MAX_FOV;
+	protected float pitch = 0.0f;
+	protected float yaw = FloatUtil.PI / -2.0f;
 	
-	private int buttonPress = 0;
-	private int lastX;
-	private int lastY;
-	
-	public Camera( GLJPanel viewport )
-	{
-		this.viewport = viewport;
-		updateView();
-		updateProjection();
-	}
+	protected int buttonPress = 0;
+	protected int lastX;
+	protected int lastY;
+	protected int viewWidth = 0;
+	protected int viewHeight = 0;
 	
 	public void setResolution( int width, int height )
 	{
+		viewWidth = width;
+		viewHeight = height;
 		ratio = (float)width / (float)height;
 		updateView();
 		updateProjection();
@@ -51,13 +45,11 @@ public class Camera extends MouseAdapter
 	private void updateView()
 	{
 		view.lookAt( position, cameraFront, cameraUp );
-		viewport.repaint();
 	}
 	
 	private void updateProjection()
 	{
 		projection.setPerspective( fov, ratio, 0.1f, 100.0f );
-		viewport.repaint();
 	}
 	
 	@Override
@@ -72,8 +64,8 @@ public class Camera extends MouseAdapter
 	@Override
 	public void mouseDragged( MouseEvent e ) 
 	{
-		float xOffset = (float)(e.getX() - lastX) * SENSITIVITY / viewport.getWidth();
-		float yOffset = (float)(lastY - e.getY()) * SENSITIVITY / viewport.getHeight();
+		float xOffset = (float)(e.getX() - lastX) * SENSITIVITY / viewWidth;
+		float yOffset = (float)(lastY - e.getY()) * SENSITIVITY / viewHeight;
 		lastX = e.getX();
 		lastY = e.getY();
 		

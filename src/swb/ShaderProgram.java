@@ -12,7 +12,7 @@ import swb.editors.ShaderEditor;
 public class ShaderProgram extends GLNode
 {
 	// Shader Global Uniforms
-	public Camera view = null;
+	public ActiveCamera view = null;
 	
 	private List<ShaderCode> shaders = new ArrayList<>();
 	

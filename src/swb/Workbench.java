@@ -25,21 +25,16 @@ import swb.dynamic.DynamicPlane;
 import swb.dynamic.Sprite;
 import swb.editors.EditorTabs;
 import swb.math.MatrixColor;
-import swb.math.vec3f;
 
 public class Workbench extends JFrame
 {
 	private static final long serialVersionUID = 1L;
+	public static final GLProfile GL_PROFILE = GLProfile.get( GLProfile.GL3 );
+	public static final GLCapabilities capabilities = new GLCapabilities( GL_PROFILE );
 	
 	private EditorTabs _editor;
 	private ProjectTree _modelTree;
-	private View3D _view;
-	
-	public static GLCapabilities capabilities;
-	{
-		final GLProfile profile = GLProfile.get( GLProfile.GL2 );
-	    capabilities = new GLCapabilities( profile );
-	}
+	private ProjectView3D _view;
 	
 	public static void main( String[] args )
 	{
@@ -52,13 +47,13 @@ public class Workbench extends JFrame
 		
 	    _editor = new EditorTabs();
 	    _modelTree = new ProjectTree( _editor );
-	    _view = new View3D( capabilities, _modelTree );
+	    _view = new ProjectView3D( capabilities, _modelTree );
 	    
 	    //_modelTree.addKeyListener( this );
 	    setJMenuBar( createMenuBar() );
 	    
 		setSize( new Dimension( 1280, 720 ) );
-		this.setPreferredSize( new Dimension( 1280, 720 ) );
+		setPreferredSize( new Dimension( 1280, 720 ) );
 		
 		JScrollPane scrollTreeView = new JScrollPane( _modelTree );
 		JSplitPane subSplitView2 = new JSplitPane( JSplitPane.VERTICAL_SPLIT, scrollTreeView, _editor );
@@ -131,11 +126,9 @@ public class Workbench extends JFrame
 		
 		build.add( createMenuItem( "Rebuild", e -> _view.recompile() ) );
 		
-		utility.add( createMenuItem( "Generate Normal Map", e -> chooseFile( this, null, false, imageFile ->
-		{
-			
-		} ) ) );
-		
+		utility.add( createMenuItem( "Export to Image", e -> 
+			chooseFile( this, null, true, imageFile ->
+				_view.queueEvent( new ProjectView3D.ExportInfo( imageFile, 2048, 2048 ) ) ) ) );
 		
 		utility.add( createMenuItem( "Generate Normal Map", e -> 
 			chooseFile( this, null, false, imageFile ->
@@ -149,17 +142,12 @@ public class Workbench extends JFrame
 		
 		utility.add( createMenuItem( "Create Sphere", e -> 
 		{
-			GLNode node = ModelUtils.createSurface( 50, 50, ModelUtils.WRAP_ALL, (s,t) -> 
+			GLNode node = ModelUtils.createSurface( 50, 50, ModelUtils.WRAP_ALL, (pos,s,t) -> 
 			{
 				float theta = s * FloatUtil.PI * 2.0f;
 				float alpha = (t - 0.5f) * FloatUtil.PI;
 				float cosa = FloatUtil.cos( alpha );
-				
-				float x = FloatUtil.cos( theta ) * cosa;
-				float y = FloatUtil.sin( theta ) * cosa;
-				float z = FloatUtil.sin( alpha );
-				
-				return new vec3f( x, y, z );
+				pos.set( FloatUtil.cos( theta ) * cosa, FloatUtil.sin( theta ) * cosa, FloatUtil.sin( alpha ) );
 			} );
 			
 			_modelTree.add( node );
@@ -174,18 +162,13 @@ public class Workbench extends JFrame
 		
 		utility.add( createMenuItem( "Create Surface", e -> 
 		{
-			GLNode node = ModelUtils.createSurface( 75, 75, ModelUtils.WRAP_ALL, (s,t) -> 
+			GLNode node = ModelUtils.createSurface( 75, 75, ModelUtils.WRAP_ALL, (pos,s,t) -> 
 			{
 				float theta = s * FloatUtil.PI * 2.0f;
 				float alpha = (t - 0.5f) * FloatUtil.PI;
 				float cosa = FloatUtil.cos( alpha );
-				
 				float a = FloatUtil.cos( (s + t) * 25.0f * FloatUtil.PI ) * 0.25f + 1.0f;
-				float x = FloatUtil.cos( theta ) * cosa * a;
-				float y = FloatUtil.sin( theta ) * cosa * a;
-				float z = FloatUtil.sin( alpha ) * a;
-				
-				return new vec3f( x, y, z );
+				pos.set( FloatUtil.cos( theta ) * cosa * a, FloatUtil.sin( theta ) * cosa * a, FloatUtil.sin( alpha ) * a );
 			} );
 			
 			_modelTree.add( node );
@@ -201,6 +184,12 @@ public class Workbench extends JFrame
 		utility.add( createMenuItem( "Create Sprite", e -> 
 		{
 			_modelTree.add( Sprite.generateSprite( "Test Sprite" ) );
+			_view.recompile();
+		} ) );
+		
+		utility.add( createMenuItem( "Create Frame", e -> 
+		{
+			_modelTree.add( ModelUtils.createFrame() );
 			_view.recompile();
 		} ) );
 		

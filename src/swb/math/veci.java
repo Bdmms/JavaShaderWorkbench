@@ -1,5 +1,7 @@
 package swb.math;
 
+import swb.utils.PrintUtil;
+
 public class veci 
 {
 	protected final int dim;
@@ -46,12 +48,6 @@ public class veci
 	@Override
 	public String toString()
 	{
-		StringBuilder builder = new StringBuilder( dim * 2 );
-		for( int i = idx; i < end; i++ )
-		{
-			builder.append( arr[i] );
-			builder.append( '\t' );
-		}
-		return builder.toString();
+		return PrintUtil.toString( "\t", arr, idx, end );
 	}
 }

@@ -1,5 +1,6 @@
 package swb;
-import java.util.List;
+
+import java.util.Arrays;
 
 import javax.swing.JPopupMenu;
 
@@ -10,6 +11,10 @@ import swb.dialog.TransformDialog;
 import swb.editors.EditorView;
 import swb.editors.VertexTable;
 import swb.math.mat4x4;
+import swb.math.vec2f;
+import swb.math.vec3f;
+import swb.math.vec4f;
+import swb.math.vecf;
 
 /**
  * Stores the vertices in a buffer.
@@ -113,6 +118,7 @@ public class VertexBuffer extends GLNode
 	
 	public void calculateNormals( int pAtr, int nAtr )
 	{
+		//TODO:
 		modifyFlag = true;
 	}
 	
@@ -194,43 +200,6 @@ public class VertexBuffer extends GLNode
 		super.update( gl );
 	}
 	
-	public void update( GL3 gl, List<Vertex> vertices )
-	{
-		int currentCapacity = vertices.size() * _stride;
-		_size = vertices.size();
-		
-		gl.glBindVertexArray( vao[0] );
-		gl.glBindBuffer( GL3.GL_ARRAY_BUFFER, vbo[0] );
-		
-		if( _buffer.length >= currentCapacity )
-		{
-			for( int i = 0; i < vertices.size(); i++ )
-			{
-				Vertex vertex = vertices.get( i );
-				
-				if( vertex.isModified() )
-				{
-					int index = i * _stride;
-					vertex.copyTo( _buffer, index );
-					gl.glBufferSubData( GL3.GL_ARRAY_BUFFER, index * Float.BYTES, _stride * Float.BYTES, Buffers.newDirectFloatBuffer( _buffer, index ) );
-				}
-			}
-		}
-		else
-		{
-			_buffer = new float[ _buffer.length * 2 ];
-			for( int i = 0; i < vertices.size(); i++ )
-			{
-				Vertex vertex = vertices.get( i );
-				
-				if( vertex.isModified() )
-					vertex.copyTo( _buffer, i * _stride );
-			}
-			
-			gl.glBufferData( GL3.GL_ARRAY_BUFFER, _buffer.length * Float.BYTES, Buffers.newDirectFloatBuffer( _buffer ), GL3.GL_DYNAMIC_DRAW );
-		}
-	}
-	
 	@Override
 	public void render( GL3 gl )
 	{
@@ -301,6 +270,39 @@ public class VertexBuffer extends GLNode
 			}
 			
 		} ) );
+	}
+	
+	/**
+	 * Wraps a set of vectors around a single buffer. The size of
+	 * each vector may not be uniform.
+	 * @param buffer - source buffer
+	 * @param atr - attribute list that specifies the size of each vector
+	 * @return an array of vectors wrapped around the buffer
+	 */
+	public static vecf[][] wrap( float[] buffer, int[] atr )
+	{
+		int stride = Arrays.stream( atr ).sum();
+		vecf[][] vectors = new vecf[buffer.length / stride][atr.length];
+		
+		for( int i = 0; i < vectors.length; i++ )
+		{
+			vecf[] vertex = vectors[i];
+			int idx = i * stride;
+			
+			for( int j = 0; j < atr.length; j++ )
+			{
+				switch( atr[j] )
+				{
+				case 2:  vertex[j] = new vec2f( buffer, idx ); break;
+				case 3:	 vertex[j] = new vec3f( buffer, idx ); break;
+				case 4:	 vertex[j] = new vec4f( buffer, idx ); break;
+				default: vertex[j] = new vecf( buffer, idx, atr[j] ); break;
+				}
+				idx += atr[j];
+			}
+		}
+		
+		return vectors;
 	}
 }
  

@@ -7,35 +7,40 @@ import com.jogamp.opengl.GL3;
 public class VertexAttribute 
 {
 	private List<GLDataType> _attributes = new ArrayList<GLDataType>();
+	private int _vertexSize = 0;
 	
 	public void add( int i, GLDataType type )
 	{
 		_attributes.add( i, type );
 	}
 	
+	public void recalculateSize()
+	{
+		_vertexSize = _attributes.stream().filter( atr -> atr != null ).mapToInt( atr -> atr.size * sizeof( atr.type ) ).sum();
+	}
+	
 	public void bind( GL3 gl )
 	{
 		int offset = 0;
-		int vertexSize = getVertexSize();
 		
 		for( int i = 0; i < _attributes.size(); i++)
 		{
 			GLDataType dataType = _attributes.get( i );
 			
 			gl.glEnableVertexAttribArray( i );
-			gl.glVertexAttribPointer( i, dataType.size, dataType.type, false, vertexSize, offset );
+			gl.glVertexAttribPointer( i, dataType.size, dataType.type, false, _vertexSize, offset );
 			offset += dataType.size * sizeof( dataType.type );
 		}
 	}
 	
-	public boolean isCompatibleWith( int stride )
-	{
-		return getVertexSize() == stride * Float.BYTES;
-	}
-	
 	public int getVertexSize()
 	{
-		return _attributes.stream().filter( atr -> atr != null ).mapToInt( atr -> atr.size * sizeof( atr.type ) ).sum();
+		return _vertexSize;
+	}
+	
+	public boolean isCompatibleWith( int stride )
+	{
+		return _vertexSize == stride * Float.BYTES;
 	}
 	
 	public void print()
@@ -92,6 +97,7 @@ public class VertexAttribute
 			attribute.add( loc, type );
 		}
 		
+		attribute.recalculateSize();
 		return attribute;
 	}
 }

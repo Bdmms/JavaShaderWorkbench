@@ -2,6 +2,8 @@ package swb.math;
 
 import com.jogamp.opengl.math.FloatUtil;
 
+import swb.utils.PrintUtil;
+
 /**
  * This class is used to create a subset of a float array.
  * This includes specifying an offset and length of the subset array.
@@ -124,6 +126,17 @@ public class vecf
 	}
 	
 	/**
+	 * Adds a scalar value to the vector
+	 * @param scalar - scalar value
+	 */
+	public void add( float scalar )
+	{
+		int i = idx;
+		while( i < end )
+			data[i++] += scalar;
+	}
+	
+	/**
 	 * Adds the values from another vector to this vector.
 	 * The size of the other vector is assumed to be the same size.
 	 * @param vector - secondary vector
@@ -164,6 +177,17 @@ public class vecf
 		int i1 = vector.idx;
 		while( i0 < end )
 			data[i0++] -= vector.data[i1++] * scalar;
+	}
+	
+	/**
+	 * Subtracts a scalar value to the vector
+	 * @param scalar - scalar value
+	 */
+	public void sub( float scalar )
+	{
+		int i = idx;
+		while( i < end )
+			data[i++] -= scalar;
 	}
 	
 	/**
@@ -212,6 +236,15 @@ public class vecf
 		while( i0 < end )
 			result += data[i0++] * vector.data[i1++];
 		return result;
+	}
+	
+	/**
+	 * Sets every element of the vector to a random value
+	 */
+	public void randomize()
+	{
+		for( int i = idx; i < end; i++ )
+			data[i] = (float)Math.random();
 	}
 	
 	/**
@@ -281,6 +314,14 @@ public class vecf
 	}
 	
 	/**
+	 * @return the number of dimensions in the vector
+	 */
+	public int rank()
+	{
+		return dim;
+	}
+	
+	/**
 	 * Compares this vector to another vector and checks if 
 	 * they are equal based on a specified threshold.
 	 * The size of the other vector is assumed to be the same size.
@@ -317,7 +358,7 @@ public class vecf
 	 */
 	public void copyTo( float[] buffer, int offset, int size )
 	{
-		if( size < dim ) throw new IndexOutOfBoundsException();
+		if( size > dim ) throw new IndexOutOfBoundsException();
 		System.arraycopy( data, idx, buffer, offset, size );
 	}
 	
@@ -345,13 +386,7 @@ public class vecf
 	@Override
 	public String toString()
 	{
-		StringBuilder builder = new StringBuilder( dim * 2 );
-		for( int i = idx; i < end; i++ )
-		{
-			builder.append( data[i] );
-			builder.append( '\t' );
-		}
-		return builder.toString();
+		return PrintUtil.toString( "\t", data, idx, end );
 	}
 	
 	/**

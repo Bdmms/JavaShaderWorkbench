@@ -1,12 +1,12 @@
 package swb;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 
 import com.jogamp.opengl.GL3;
 
 import swb.importer.Importer;
 import swb.math.vec3f;
+import swb.math.vecf;
 
 public class ModelUtils 
 {
@@ -16,6 +16,18 @@ public class ModelUtils
 	public final static int WRAP_ST 	 = 0x03;
 	public final static int WRAP_CORNER  = 0x04;
 	public final static int WRAP_ALL  	 = 0x07;
+	
+	public static GLNode createFrame()
+	{
+		GLNode model = new GLNode( "Frame" );
+		int[] iBuffer = { 0, 1, 2, 1, 2, 3 };
+		float[] vBuffer = { -1.0f, -1.0f, -1.0f, 1.0f, 1.0f, -1.0f, 1.0f, 1.0f };
+		
+		model.add( ShaderProgram.generateProgram( "frameShader" ) );
+		model.add( new VertexBuffer( vBuffer, 2 ) );
+		model.add( new ElementBuffer( iBuffer ) );
+		return model;
+	}
 	
 	public static GLNode createPlane( int w, int h )
 	{
@@ -41,25 +53,19 @@ public class ModelUtils
 	public static GLNode createSurface( int w, int h, int wrapMsk, SurfaceFunction surface )
 	{
 		int size = w * h;
+		float[] vBuffer = new float[size * 8];
 		int[] iBuffer = generateSurfaceElements( w, h, wrapMsk );
+		int[] nCounts = new int[size];
+		
+		vecf[][] vertices = VertexBuffer.wrap( vBuffer, new int[] { 3, 3, 2 } );
 		
 		// Generate vertices
-		vec3f[] vertices = new vec3f[size];
-		float wf = w - 1;
-		float hf = h - 1;
-		
 		for( int i = 0; i < size; i++ )
 		{
-			float x = (float)( i % w ) / wf;
-			float y = (float)( i / w ) / hf;
-			vertices[i] = surface.surfaceAt( x, y );
+			float x = (float)( i % w ) / (w - 1);
+			float y = (float)( i / w ) / (h - 1);
+			surface.surfaceAt( (vec3f)vertices[i][0], x, y );
 		}
-		
-		// Prepare normals
-		vec3f[] normals = new vec3f[size];
-		int[] nCounts = new int[size];
-		for( int i = 0; i <  normals.length; i++ )
-			normals[i] = new vec3f();
 		
 		// Sum the normals per face
 		for( int e = 0; e < iBuffer.length; )
@@ -68,33 +74,20 @@ public class ModelUtils
 			int i1 = iBuffer[e++];
 			int i2 = iBuffer[e++];
 			
-			vec3f vs = vertices[i1].from( vertices[i0] );
-			vec3f vt = vertices[i2].from( vertices[i0] );
-			vec3f vn = vs.cross( vt );
+			vec3f vn = vec3f.triangleNormal( (vec3f)vertices[i0][0], (vec3f)vertices[i1][0] , (vec3f)vertices[i2][0] );
 			vn.normalize();
 			
-			normals[i0].add( vn );
-			normals[i1].add( vn );
-			normals[i2].add( vn );
+			vertices[i0][1].add( vn );
+			vertices[i1][1].add( vn );
+			vertices[i2][1].add( vn );
 			nCounts[i0]++;
 			nCounts[i1]++;
 			nCounts[i2]++;
 		}
 		
 		// Scale the normal average
-		for( int i = 0; i < normals.length; i++ )
-			normals[i].div( nCounts[i] );
-		
-		// Convert vertices to buffer
-		float[] vBuffer = new float[ w * h * 8 ];
-		for( int i = 0, vIdx = 0; i < vertices.length; i++ )
-		{
-			vec3f v = vertices[i];
-			vec3f vn = normals[i];
-			v.copyTo( vBuffer, vIdx );
-			vn.copyTo( vBuffer, vIdx + 3 );
-			vIdx += 8;
-		}
+		for( int i = 0; i < vertices.length; i++ )
+			vertices[i][1].div( nCounts[i] );
 		
 		return createMesh( "Cube", vBuffer, iBuffer );
 	}
@@ -184,11 +177,7 @@ public class ModelUtils
 	{
 		try 
 		{
-			byte[] data = new byte[(int)file.length()];
-			FileInputStream stream = new FileInputStream( file );
-			stream.read( data );
-			stream.close();
-			return new String( data );
+			return Importer.fileToString( file );
 		} 
 		catch (IOException e) 
 		{
@@ -202,13 +191,14 @@ public class ModelUtils
 		String filename = file.getName();
 		String ext = filename.substring( filename.lastIndexOf( '.' ) + 1 ).toUpperCase();
 		
-		Importer importer = Importer.getImporter( ext );
-		return importer == null ? null : importer.read( file );
+		//Importer importer = Importer.getImporter( ext );
+		//return importer == null ? null : importer.read( file );
+		return null;
 	}
 	
 	@FunctionalInterface
 	public static interface SurfaceFunction
 	{
-		public vec3f surfaceAt( float s, float t );
+		public void surfaceAt( vec3f position, float s, float t );
 	}
 }

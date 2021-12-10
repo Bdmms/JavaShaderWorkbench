@@ -60,12 +60,6 @@ public class NeuralNetwork extends ArrayList<NetworkLayer> implements Comparable
 		return copy;
 	}
 	
-	public static void print( double[] arr )
-	{
-		String text = String.join( " ", Arrays.stream( arr ).mapToObj( val -> String.valueOf( val ) ).collect( Collectors.toList() ) );
-		System.out.println( text );
-	}
-	
 	public static void main( String[] args )
 	{
 		int[] structure = { 4, 1000, 1000, 1000, 1000, 1000, 1 };

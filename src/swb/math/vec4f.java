@@ -137,10 +137,10 @@ public class vec4f extends vec3f
 	public int toRGBA()
 	{
 		int i = this.idx;
-		int ia = data[i] > 1.0f ? 0xFF000000 : (data[i] < 0.0f ? 0 : (int)Math.round( data[i] * 255.0f ) << 24 ); i++;
 		int ir = data[i] > 1.0f ? 0xFF0000 : (data[i] < 0.0f ? 0 : (int)Math.round( data[i] * 255.0f ) << 16 ); i++;
 		int ig = data[i] > 1.0f ? 0xFF00 : (data[i] < 0.0f ? 0 : (int)Math.round( data[i] * 255.0f ) << 8 ); i++;
-		int ib = data[i] > 1.0f ? 0xFF : (data[i] < 0.0f ? 0 : (int)Math.round( data[i] * 255.0f ) );
+		int ib = data[i] > 1.0f ? 0xFF : (data[i] < 0.0f ? 0 : (int)Math.round( data[i] * 255.0f ) ); i++;
+		int ia = data[i] > 1.0f ? 0xFF000000 : (data[i] < 0.0f ? 0 : (int)Math.round( data[i] * 255.0f ) << 24 );
 		return ia | ir | ig | ib;
 	}
 	

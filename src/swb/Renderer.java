@@ -10,9 +10,9 @@ public class Renderer extends ArrayList<GLNode>
 	
 	/** Instance list */
 	public GLNode[] instances = new GLNode[GLNode.INSTANCE_CAPACITY];
-	public Camera camera;
+	public ActiveCamera camera;
 	
-	public Renderer( Camera camera )
+	public Renderer( ActiveCamera camera )
 	{
 		this.camera = camera;
 	}

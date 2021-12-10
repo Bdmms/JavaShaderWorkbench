@@ -10,7 +10,7 @@ import com.jogamp.opengl.awt.GLJPanel;
 import com.jogamp.opengl.util.FPSAnimator;
 
 import swb.Animation;
-import swb.Camera;
+import swb.ActiveCamera;
 import swb.GLDataType;
 import swb.GLNode;
 import swb.Renderer;
@@ -25,7 +25,7 @@ public class AnimationViewer extends GLJPanel implements GLEventListener, Editor
 {
 	private static final long serialVersionUID = 1L;
 
-	private Camera _camera;
+	private ActiveCamera _camera;
 	private Renderer renderer;
 	private Animation animation;
 	
@@ -55,7 +55,7 @@ public class AnimationViewer extends GLJPanel implements GLEventListener, Editor
 		
 		frame = animation.startFrame;
 		
-		_camera = new Camera( this );
+		_camera = new ActiveCamera( this );
 		renderer = new Renderer( _camera );
 		
 		addGLEventListener( this );

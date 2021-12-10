@@ -225,89 +225,49 @@ public class mat4x4 extends mat3x3
 		data[i++] = -1.0f;							data[i  ] = 0.0f;
 	}
 	
-	/*
-	public void setQR( vec4f quat )
+	public void setQuaternionRotation( vec4f quat )
 	{
 		int i = quat.idx;
-		float q0 = quat.data[i++];
+		float s = 2.0f / quat.length2();
+		float qx = quat.data[i++];
+		float qy = quat.data[i++];
+		float qz = quat.data[i++];
+		float q0 = quat.data[i  ];
+		i = idx;
+		data[i++] = 1.0f - s * (qy * qy + qz * qz);
+		data[i++] = s * (qx * qy - qz * q0);
+		data[i++] = s * (qx * qz + qy * q0);
+		data[i++] = 0.0f;
+		data[i++] = s * (qx * qy + qz * q0);
+		data[i++] = 1.0f - s * (qx * qx + qz * qz);
+		data[i++] = s * (qy * qz - qx * q0);
+		data[i++] = 0.0f;
+		data[i++] = s * (qx * qz - qy * q0);
+		data[i++] = s * (qy * qz + qx * q0);
+		data[i++] = 1.0f - s * (qx * qx + qy * qy);
+		data[i  ] = 0.0f;
+	}
+	
+	public void setQuaternionRotation( vec3f quat )
+	{
+		int i = quat.idx;
+		float s = 2.0f / quat.length2();
 		float qx = quat.data[i++];
 		float qy = quat.data[i++];
 		float qz = quat.data[i  ];
 		i = idx;
-		data[i++] = 1.0f - 2.0f * qy * qy  - 2.0f * qz * qz;
-		data[i++] = 2.0f * qx * qy - 2.0f * qz * q0;
-		data[i] = 2.0f * qx * qz + 2.0f * qy * q0;
-		i += 2;
-		data[i++] = 2.0f * qx * qy + 2.0f * qz * q0;
-		data[i++] = 1.0f - 2.0f * qx * qx  - 2.0f * qz * qz;
-		data[i] = 2.0f * qy * qz - 2.0f * qx * q0;
-		i += 2;
-		data[i++] = 2.0f * qx * qz - 2.0f * qy * q0;
-		data[i++] = 2.0f * qy * qz + 2.0f * qx * q0;
-		data[i] = 1.0f - 2.0f * qx * qx  - 2.0f * qy * qy;
-	}
-	
-	public void setQR( vec3f quat )
-	{
-		int i = quat.idx;
-		float qx = quat.data[i++];
-		float qy = quat.data[i++];
-		float qz = quat.data[i  ];
-		i = idx;
-		data[i++] = 1.0f - 2.0f * qy * qy  - 2.0f * qz * qz;
-		data[i++] = 2.0f * qx * qy - 2.0f * qz;
-		data[i] = 2.0f * qx * qz + 2.0f * qy;
-		i += 2;
-		data[i++] = 2.0f * qx * qy + 2.0f * qz;
-		data[i++] = 1.0f - 2.0f * qx * qx  - 2.0f * qz * qz;
-		data[i] = 2.0f * qy * qz - 2.0f * qx;
-		i += 2;
-		data[i++] = 2.0f * qx * qz - 2.0f * qy;
-		data[i++] = 2.0f * qy * qz + 2.0f * qx;
-		data[i] = 1.0f - 2.0f * qx * qx  - 2.0f * qy * qy;
-	}*/
-	
-	// TODO: Something is wrong
-	public void setQuaternionRotation( vec4f quaternion )
-	{
-		int i = quaternion.idx;
-		float q0 = quaternion.data[i++];
-		float qx = quaternion.data[i++];
-		float qy = quaternion.data[i++];
-		float qz = quaternion.data[i  ];
-		i = idx;
-		data[i++] = q0 * q0 + qx * qx - qy * qy - qz * qz;
-		data[i++] = 2.0f * qx * qy - 2.0f * qz * q0;
-		data[i] = 2.0f * qx * qz + 2.0f * qy * q0;
-		i += 2;
-		data[i++] = 2.0f * qx * qy + 2.0f * qz * q0;
-		data[i++] = q0 * q0 - qx * qx + qy * qy - qz * qz;
-		data[i] = 2.0f * qy * qz - 2.0f * qx * q0;
-		i += 2;
-		data[i++] = 2.0f * qx * qz - 2.0f * qy * q0;
-		data[i++] = 2.0f * qy * qz + 2.0f * qx * q0;
-		data[i] = q0 * q0 - qx * qx - qy * qy + qz * qz;
-	}
-	
-	// TODO: Something is wrong
-	public void setQuaternionRotation( vec3f quaternion )
-	{
-		int i = quaternion.idx;
-		float qx = quaternion.data[i++];
-		float qy = -quaternion.data[i++];
-		float qz = quaternion.data[i  ];
-		i = idx;
-		data[i++] = 1.0f + qx * qx - qy * qy - qz * qz;
-		data[i++] = 2.0f * qx * qy - 2.0f * qz;
-		data[i] = 2.0f * qx * qz + 2.0f * qy;
-		i += 2;
-		data[i++] = 2.0f * qx * qy + 2.0f * qz;
-		data[i++] =  1.0f + qy * qy - qx * qx - qz * qz;
-		data[i] = 2.0f * qy * qz - 2.0f * qx;
-		i += 2;
-		data[i++] = 2.0f * qx * qz - 2.0f * qy;
-		data[i++] = 2.0f * qy * qz + 2.0f * qx;
-		data[i] = 1.0f + qz * qz - qx * qx - qy * qy;
+		data[i++] = 1.0f - s * (qy * qy + qz * qz);
+		data[i++] = s * qx * qy;
+		data[i++] = s * qx * qz;
+		data[i++] = 0.0f;
+		data[i++] = s * qx * qy;
+		data[i++] = 1.0f - s * (qx * qx + qz * qz);
+		data[i++] = s * qy * qz ;
+		data[i++] = 0.0f;
+		data[i++] = s * qx * qz;
+		data[i++] = s * qy * qz;
+		data[i++] = 1.0f - s * (qx * qx + qy * qy);
+		data[i  ] = 0.0f;
 	}
 	
 	/**

@@ -84,7 +84,7 @@ public class Triangle
 	
 	public vec3f normal()
 	{
-		return v2.from( v1 ).cross( v3.from( v1 ) );
+		return vec3f.triangleNormal( v1, v2, v3 );
 	}
 	
 	public boolean parallelTo( Triangle triangle )

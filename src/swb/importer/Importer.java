@@ -5,53 +5,51 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.HashMap;
 
-import swb.GLNode;
+import swb.assets.Asset;
 
-/**
- * This an object to process a file and generate the components derived from the file.
- */
-public abstract class Importer
+public abstract class Importer 
 {
-	/** Map of extensions to Importer */
 	private static HashMap<String, Importer> IMPORTERS = new HashMap<>();
 	
 	static
 	{
-		 new ImporterDAE();
-		 new ImporterFBX();
-		 new ImporterOBJ();
-		 new ImporterSMD();
+		// TODO: Make optional
+		addImporter( new ImporterImage() );
+		addImporter( new ImporterShader() );
 	}
 	
-	/**
-	 * Creates an Importer that handles a set of file extensions
-	 * @param exts - array of file extensions
-	 */
-	public Importer( String[] exts )
+	public abstract Asset initAsset( String filepath );
+	public abstract boolean loadAsset( Asset asset );
+	public abstract String[] getExtensions();
+	
+	public Asset importFile( String filepath )
 	{
+		Asset asset = initAsset( filepath );
+		return loadAsset( asset ) ? asset : null;
+	}
+	
+	public static void addImporter( Importer importer )
+	{
+		String[] exts = importer.getExtensions();
+		
 		for( String ext : exts )
 		{
-			IMPORTERS.put( ext, this );
-			System.out.println( "Added Importer: " + ext );
+			System.out.println( "Loaded Extension: " + ext );
+			IMPORTERS.put( ext, importer ); 
 		}
 	}
 	
-	/**
-	 * Reads a file and generates the components derived from the file.
-	 * @param file - File that is read
-	 * @return The {@link GLNode} that is the root of all derived components
-	 * @throws IOException - If file cannot be read or handled
-	 */
-	public abstract GLNode read( File file ) throws IOException;
-	
-	/**
-	 * Retrieves the {@link Importer} that is responsible for this extension
-	 * @param extension - File extension in uppercase lettering
-	 * @return {@link Importer} or null
-	 */
-	public static Importer getImporter( String extension )
+	public static Asset importAsset( String filepath )
 	{
-		return IMPORTERS.get( extension );
+		Importer importer = getImporter( filepath );
+		if( importer == null ) throw new NullPointerException( "No handler for file: " + filepath );
+		return importer.importFile( filepath );
+	}
+	
+	public static Importer getImporter( String filepath )
+	{
+		String ext = filepath.substring( filepath.lastIndexOf( '.' ) + 1 );
+		return IMPORTERS.get( ext.toUpperCase() );
 	}
 	
 	/**
@@ -60,7 +58,7 @@ public abstract class Importer
 	 * @return String containing the entire file data
 	 * @throws IOException If file cannot be read
 	 */
-	protected static String fileToString( File file ) throws IOException
+	public static String fileToString( File file ) throws IOException
 	{
 		byte[] data = new byte[(int)file.length()];
 		FileInputStream stream = new FileInputStream( file );

@@ -2,13 +2,12 @@ package swb.dynamic;
 
 import com.jogamp.opengl.GL3;
 
-import swb.Camera;
+import swb.ActiveCamera;
 import swb.GLNode;
 import swb.Renderer;
 import swb.ShaderProgram;
 import swb.VertexBufferDirect;
 import swb.math.mat4x4;
-import swb.math.vec3f;
 
 public class Sprite extends VertexBufferDirect
 {
@@ -18,7 +17,7 @@ public class Sprite extends VertexBufferDirect
 			-1.0f, 1.0f, 0.0f, 	1.0f, -1.0f, 0.0f, 	-1.0f, -1.0f, 0.0f
 	};
 	
-	private Camera camera;
+	private ActiveCamera camera;
 	private mat4x4 model = new mat4x4();
 	private int modelLoc;
 	
@@ -46,8 +45,7 @@ public class Sprite extends VertexBufferDirect
 	@Override
 	public void render( GL3 gl )
 	{
-		vec3f unit = camera.position.unit();
-		model.setQuaternionRotation( unit );
+		model.setQuaternionRotation( camera.position );
 		model.upload( gl, modelLoc );
 		super.render( gl );
 	}
